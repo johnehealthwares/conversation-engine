@@ -4,6 +4,7 @@ jest.setTimeout(30000);
 process.env.MONGOMS_BINARY_VERSION = '6.0.6';
 // custom download directory; binaries will be cached here
 process.env.MONGOMS_DOWNLOAD_DIR = '/tmp/mongo-binaries';
+process.env.MONGOMS_IP = '127.0.0.1';
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, INestApplication, ValidationPipe } from '@nestjs/common';
@@ -33,6 +34,24 @@ import {
 } from './fixtures/test-data';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { AllExceptionsFilter } from './AllExceptionsFilter';
+import net from 'node:net';
+
+const getFreeLocalPort = (): Promise<number> =>
+  new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      server.close(() => {
+        if (!address || typeof address === 'string') {
+          reject(new Error('Failed to resolve local port'));
+          return;
+        }
+        resolve(address.port);
+      });
+    });
+  });
 
 describe('Questionnaire Integration Tests (E2E)', () => {
   let app: INestApplication;
@@ -42,9 +61,12 @@ describe('Questionnaire Integration Tests (E2E)', () => {
   beforeAll(async () => {
     // ensure memory server uses a stable binary version to avoid SIGABRT crashes
     process.env.MONGOMS_BINARY_VERSION = '6.0.6';
+    process.env.MONGOMS_IP = '127.0.0.1';
     // Start in-memory MongoDB server for testing
+    const port = await getFreeLocalPort();
     mongoServer = await MongoMemoryServer.create({
       binary: { version: '6.0.6' },
+      instance: { ip: '127.0.0.1', port },
     });
     const mongoUri = mongoServer.getUri();
 
@@ -75,7 +97,9 @@ describe('Questionnaire Integration Tests (E2E)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
     if (mongoServer) {
       await mongoServer.stop();
     }

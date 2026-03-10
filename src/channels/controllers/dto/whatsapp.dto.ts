@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { WhatsAppMessageStatus } from 'src/shared/domain';
+
+export enum WhatsAppMessageStatus {
+  SENT = 'sent',
+  DELIVERED = 'delivered',
+  READ = 'read',
+  FAILED = 'failed',
+}
 
 export class MediaDto {
   @ApiProperty({ example: '1234567890' })

@@ -6,7 +6,7 @@ curl -i -X POST \
 
 ###Registeration API
 
-curl -X POST "https://graph.facebook.com/v22.0/765993872956281/register" \
+curl -X POST "https://graph.facebook.com/v22.0/1046591291866828/register" \
   -H "Authorization: Bearer EAAcLJZBSOVH8BQ5DcWmYuS5GZBbeTndVRZBaBpr8i41ErY2lrHTmiXj2GIZCm61v6Y8NxemesMmaruEt4SdZCppSS9kwNYFlgqcfxUGMVyLHB0ZC7RNXX5e0ZBePdUQTF35lurVFr7ZC4sDQaKUBEcNNJJbvmql64kCP402W0ZA5vNz4GymceoOwbbuYWIS8D0LIrozzQ9PqnHjRLSgwMXGJi6GzwOtg9TAGGJUCn" \
   -H "Content-Type: application/json" \
   -d '{

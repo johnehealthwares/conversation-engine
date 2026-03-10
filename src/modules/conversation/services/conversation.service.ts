@@ -20,7 +20,7 @@ import { ParticipantService } from './participant.service';
 import { ProcessAnswerStatus, QuestionProcessorService } from './question-processor.service';
 import { Channel } from '../../../shared/domain/channel.domain';
 import { ChannelSender } from '../../../channels/senders/channel-sender';
-import { ConversationResponse } from 'src/shared/domain/conversation-response';
+import { ConversationResponse } from '../../../shared/domain/conversation-response';
 import { MessageContext } from '../../../shared/domain/message-context.domain';
 
 
@@ -124,7 +124,7 @@ export class ConversationService {
 
     return question;
   }
-  async processInboundMessageFromPhoneNumber(channel: ChannelDomain, phone: string, message, questionnaireCode: string, context?: InboundMessageContext,) {
+  async processInboundMessageFromPhoneNumber(channel: ChannelDomain, phone: string, message, questionnaireCode: string, context: MessageContext) {
     const participant = await this.participantService.findByPhone(phone);
     if(!participant){
        return {

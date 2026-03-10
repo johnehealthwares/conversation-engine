@@ -57,10 +57,3 @@ export enum ConversationStatus {
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }
-
-export enum WhatsAppMessageStatus {
-  SENT = 'sent',
-  DELIVERED = 'delivered',
-  READ = 'read',
-  FAILED = 'failed',
-}

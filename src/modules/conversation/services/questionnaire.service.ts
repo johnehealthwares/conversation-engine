@@ -11,7 +11,7 @@ import {
 } from '../controllers/dto/questionnaire.dto';
 import { QuestionDomain, QuestionnaireDomain } from '../../../shared/domain';
 import { mapQuestionEntityToDomain } from '../../../shared/converters/question-converter';
-import { toDomain } from 'src/shared/converters';
+import { toDomain } from '../../../shared/converters';
 
 @Injectable()
 export class QuestionnaireService {

@@ -13,6 +13,7 @@ import { ChannelProcessorFactory } from './processors/channel-processor-factory'
 import { WhatsappProcessor } from './processors/whatsapp-processor';
 import { SmsProcessor } from './processors/sms-processor';
 import { ConversationModule } from '../modules/conversation/conversation.module';
+import { ConversationService } from '../modules/conversation/services/conversation.service';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ConversationModule } from '../modules/conversation/conversation.module'
     ChannelProcessorFactory,
     WhatsappProcessor,
     SmsProcessor,
+    ConversationService,
   ],
   exports: [ExchangeService, ChannelService, ChannelSenderFactory],
 })

@@ -9,7 +9,7 @@ import {
 } from '../schemas/exchange.schema';
 import { WhatsAppWebhookDto } from '../controllers/dto/whatsapp.dto';
 import { ConversationService } from '../../modules/conversation/services/conversation.service';
-import { ChannelDomain } from 'src/shared/domain';
+import { ChannelDomain } from '../../shared/domain';
 
 type CreateExchangePayload = Partial<Exchange> & {
   channelType: string;

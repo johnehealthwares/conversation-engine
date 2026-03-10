@@ -31,6 +31,7 @@ export class SmsProcessor implements ChannelProcessor {
       channelType: ChannelType.SMS,
       sender: from,
       message: text,
+      messageId: '',
       questionnaireCode,
       metadata: { source: 'sms_webhook' },
       rawPayload: payload,
@@ -45,6 +46,7 @@ export class SmsProcessor implements ChannelProcessor {
         channelId,
         channelType: ChannelType.SMS,
         questionnaireCode,
+        messageId: '',
       },
     );
   }

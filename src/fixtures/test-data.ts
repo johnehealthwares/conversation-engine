@@ -3,8 +3,8 @@
  * Contains all mock data for e2e testing
  */
 
-import { CreateOptionDto, CreateOptionListDto } from '../../src/modules/conversation/controllers/dto/option-list.dto';
-import { CreateQuestionnaireDto } from '../../src/modules/conversation/controllers/dto/questionnaire.dto';
+import { CreateOptionDto, CreateOptionListDto } from '../modules/conversation/controllers/dto/option-list.dto';
+import { CreateQuestionnaireDto } from '../modules/conversation/controllers/dto/questionnaire.dto';
 import { CreateQuestionDto } from '../modules/conversation/controllers/dto/create-question.dto';
 
 import {
@@ -12,7 +12,7 @@ import {
   RenderMode,
   ProcessMode,
   ProcessingStrategy,
-} from '../../src/shared/domain';
+} from '../shared/domain';
 import { Option } from '../modules/conversation/schemas/option.schema';
 
 /**
