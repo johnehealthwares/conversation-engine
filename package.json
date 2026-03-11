@@ -27,6 +27,7 @@
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/mongoose": "^11.0.4",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-fastify": "^11.1.16",
     "@nestjs/swagger": "^11.2.6",
     "@nestjs/typeorm": "^11.0.0",
     "axios": "^1.13.6",
@@ -87,7 +88,6 @@
     "silent": false
   },
   "engines": {
-    "node": ">=22.22.0 <24.14.0"
+    "node": ">=22.22.0 <=24.14.0"
   }
-
 }
