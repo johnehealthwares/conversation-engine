@@ -22,8 +22,8 @@ export class NigeriaBulkSmsSender implements ChannelSender {
     context?: Record<string, any>,
   ): Promise<void> {
     try {
-      const username = this.configService.get<string>('BULKSMS_USERNAME');
-      const password = this.configService.get<string>('BULKSMS_PASSWORD');
+      const username = this.configService.get<string>('BULKSMS_USERNAME') || '';
+      const password = this.configService.get<string>('BULKSMS_PASSWORD') || '';
       const senderName = this.configService.get<string>('BULKSMS_SENDER') || 'App';
 
       if (!username || !password) {
@@ -35,7 +35,7 @@ export class NigeriaBulkSmsSender implements ChannelSender {
         password,
         sender: senderName,
         message,
-        mobiles: participant.phone,
+        mobiles: participant.phone!,
       });
 
       const url = `${this.baseUrl}?${params.toString()}`;
@@ -49,7 +49,7 @@ export class NigeriaBulkSmsSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: 'SMS',
-        recipient: participant.phone,
+        recipient: participant.phone!,
         message,
         messageId: '',
         conversationId: context?.conversationId,
@@ -64,7 +64,7 @@ export class NigeriaBulkSmsSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: 'SMS',
-        recipient: participant.phone,
+        recipient: participant.phone!,
         message,
         messageId: '',
         conversationId: context?.conversationId,

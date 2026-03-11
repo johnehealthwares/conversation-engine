@@ -3,7 +3,7 @@ jest.setTimeout(30000);
 // explicitly pin mongodb-memory-server binary version early
 process.env.MONGOMS_BINARY_VERSION = '6.0.6';
 // custom download directory; binaries will be cached here
-process.env.MONGOMS_DOWNLOAD_DIR = '/tmp/mongo-binaries';
+process.env.MONGOMS_DOWNLOAD_DIR = './mongo-binaries';
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, INestApplication, ValidationPipe } from '@nestjs/common';

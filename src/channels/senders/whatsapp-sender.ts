@@ -67,7 +67,7 @@ export class WhatsappSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: ChannelType.WHATSAPP,
-        recipient: destination.phone,
+        recipient: destination.phone!,
         message,
         conversationId: context?.conversationId,
         questionnaireCode: context?.questionnaireCode,
@@ -82,7 +82,7 @@ export class WhatsappSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: 'WHATSAPP',
-        recipient: destination.phone,
+        recipient: destination.phone!,
         message,
         messageId: 'error',
         conversationId: context?.conversationId,
@@ -119,7 +119,7 @@ export class WhatsappSender implements ChannelSender {
       );
     }
 
-    await this.sendMediaMessage(destination.phone, payload, mediaId, config);
+    await this.sendMediaMessage(destination.phone!, payload, mediaId, config);
   }
 
   private async uploadMedia(file: Express.Multer.File): Promise<string> {
