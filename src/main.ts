@@ -13,14 +13,14 @@ async function bootstrap() {
 
 
 
-   const config = new DocumentBuilder()
-    .setTitle('Conversation Engine API')
-    .setDescription('Question & Option Management')
-    .setVersion('1.0')
-    .build();
+  //  const config = new DocumentBuilder()
+  //   .setTitle('Conversation Engine API')
+  //   .setDescription('Question & Option Management')
+  //   .setVersion('1.0')
+  //   .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // const document = SwaggerModule.createDocument(app, config);
+  // SwaggerModule.setup('api/docs', app, document);
 
   const shouldSeedOnStartup = configService.get<string>('SEED_ON_STARTUP', 'true') !== 'false';
   if (shouldSeedOnStartup) {
