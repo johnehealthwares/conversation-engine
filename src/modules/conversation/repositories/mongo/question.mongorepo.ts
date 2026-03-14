@@ -44,7 +44,6 @@ export class QuestionMongoRepository implements QuestionRepository {
 
     const result = await this.model.find(query).populate('options').lean();
     const all = await this.model.find();
-    console.log({filter,result, all})
     return result;
   }
 

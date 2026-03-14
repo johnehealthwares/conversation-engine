@@ -2,22 +2,25 @@ import { Option } from '../../modules/conversation/schemas/option.schema';
 import { QuestionnaireDomain, QuestionDomain, OptionDomain } from '../domain';
 import { Question } from '../../modules/conversation/schemas/question.schema';
 import { Types } from 'mongoose';
+import { OptionList } from 'src/modules/conversation/schemas/option-list.schema';
 
-export function mapQuestionEntityToDomain(question: Question): QuestionDomain {
-  return {
-    ...question,
-    id: question._id.toString(),
-    options: question.options?.map(mapOptionEntityToDomain) || [],
-    questionnaireId: question.questionnaireId.toString(),
-    optionListId: question.optionListId?.toString(),
-    createdAt: question.createdAt || new Date()
+export function mapQuestionEntityToDomain(schema: Question): QuestionDomain {
+  const optionListOptions = (schema.optionListId as unknown as any)?.options?.map((option) => mapOptionEntityToDomain(option)); //TODO: this doc issue is dirty
+  const domain = {
+    ...schema,
+    id: schema._id.toString(),
+    options: schema.optionListId ? optionListOptions  : schema.options?.map(mapOptionEntityToDomain) || [],
+    questionnaireId: schema.questionnaireId.toString(),
+    optionListId: schema.optionListId?.toString(),
+    createdAt: schema.createdAt || new Date()
   };
+  return domain;
+  
 }
 
 
 export function mapOptionEntityToDomain(option: Option): OptionDomain {
   return {
-    id: option._id?.toString(),
     ...option
   };
 }

@@ -37,15 +37,21 @@ export class QuestionnaireService {
   }
 
   async findOne(id: string): Promise<QuestionnaireDomain> {
-    const result = await this.model.findById(id).lean();
+    const result = await this.model.findById(id).populate({
+    path: 'questions',
+    populate: {
+      path: 'optionListId',
+      model: 'OptionList'
+    }
+  }).lean().exec();
     if (!result) throw new NotFoundException('Questionnaire not found');
      const { _id, questions, ...others} =  result;
     const domain = {...others, id: _id.toString(), questions: questions?.map(mapQuestionEntityToDomain)};
     return domain;
   }
-
+ 
   async findByCode(code: string): Promise<QuestionnaireDomain | null> {
-    const result = await this.model.findOne({ code }).lean();
+    const result = await this.model.findOne({ code }).populate('questions.optionListId').lean().exec();
     if (!result) return result;
     const { _id, questions, ...others } = result;
     return {

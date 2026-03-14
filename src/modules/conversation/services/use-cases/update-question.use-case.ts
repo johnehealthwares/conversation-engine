@@ -20,7 +20,6 @@ export class UpdateQuestionUseCase {
       throw new NotFoundException(`Question with id ${id} not found`);
     }
 
-    console.log({domain})
     // TEXT TYPE validation
     // if (domain.questionType && domain.questionType === QuestionType.TEXT) {
     //   if (domain.options?.length || domain.optionListId) {

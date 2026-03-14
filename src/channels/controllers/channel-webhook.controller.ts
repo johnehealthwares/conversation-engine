@@ -4,6 +4,8 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Query,
 } from '@nestjs/common';
@@ -40,9 +42,9 @@ export class ChannelWebhookController {
   }
 
   @Post('whatsapp')
+  @HttpCode(HttpStatus.OK) 
   @ApiBody({ type: WhatsAppWebhookDto })
   async whatsapp(@Body() payload: WhatsAppWebhookDto) {
-    console.log({payload})
     return this.whatsappProcessor.processInbound(payload);
   }
 

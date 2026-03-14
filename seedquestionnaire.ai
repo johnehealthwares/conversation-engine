@@ -1,0 +1,3997 @@
+[
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Insurance Service Preauthorization",
+    "code": "INSURANCE_SERVICE_PREAUTHORIZATION",
+    "description": "Collect preauthorization details before treatment approval.",
+    "introduction": "Please provide your insurance preauthorization details.",
+    "conclusion": "Preauthorization request submitted successfully.",
+    "tags": [
+      "insurance",
+      "billing",
+      "preauthorization"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Insurance provider name",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 2,
+        "isRequired": true
+      },
+      {
+        "text": "Insurance member ID",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": true
+      },
+      {
+        "text": "Requested hospital department",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Diagnosis or disease being treated",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "malaria",
+            "value": "Malaria",
+            "label": "Malaria",
+            "index": 1
+          },
+          {
+            "key": "cholera",
+            "value": "Cholera",
+            "label": "Cholera",
+            "index": 2
+          },
+          {
+            "key": "lassa_fever",
+            "value": "Lassa Fever",
+            "label": "Lassa Fever",
+            "index": 3
+          },
+          {
+            "key": "measles",
+            "value": "Measles",
+            "label": "Measles",
+            "index": 4
+          },
+          {
+            "key": "tuberculosis",
+            "value": "Tuberculosis",
+            "label": "Tuberculosis",
+            "index": 5
+          },
+          {
+            "key": "covid_19",
+            "value": "COVID-19",
+            "label": "COVID-19",
+            "index": 6
+          },
+          {
+            "key": "meningitis",
+            "value": "Meningitis",
+            "label": "Meningitis",
+            "index": 7
+          },
+          {
+            "key": "typhoid_fever",
+            "value": "Typhoid Fever",
+            "label": "Typhoid Fever",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Service type requested",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 6,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "consultation",
+            "value": "Consultation",
+            "label": "Consultation",
+            "index": 1
+          },
+          {
+            "key": "laboratory",
+            "value": "Laboratory",
+            "label": "Laboratory",
+            "index": 2
+          },
+          {
+            "key": "radiology",
+            "value": "Radiology",
+            "label": "Radiology",
+            "index": 3
+          },
+          {
+            "key": "procedure",
+            "value": "Procedure",
+            "label": "Procedure",
+            "index": 4
+          },
+          {
+            "key": "admission",
+            "value": "Admission",
+            "label": "Admission",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Expected date of service",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 7,
+        "isRequired": true
+      },
+      {
+        "text": "Treating physician name",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 8,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Weekly Disease Surveillance Report",
+    "code": "WEEKLY_DISEASE_SURVEILLANCE_REPORT",
+    "description": "Capture weekly communicable disease surveillance data.",
+    "introduction": "Enter this week's surveillance report.",
+    "conclusion": "Disease surveillance report received.",
+    "tags": [
+      "public-health",
+      "surveillance",
+      "epidemiology"
+    ],
+    "questions": [
+      {
+        "text": "Field officer name",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Field officer phone",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 2,
+        "isRequired": true
+      },
+      {
+        "text": "State in Nigeria",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "abia",
+            "value": "Abia",
+            "label": "Abia",
+            "index": 1
+          },
+          {
+            "key": "adamawa",
+            "value": "Adamawa",
+            "label": "Adamawa",
+            "index": 2
+          },
+          {
+            "key": "akwa_ibom",
+            "value": "Akwa Ibom",
+            "label": "Akwa Ibom",
+            "index": 3
+          },
+          {
+            "key": "anambra",
+            "value": "Anambra",
+            "label": "Anambra",
+            "index": 4
+          },
+          {
+            "key": "bauchi",
+            "value": "Bauchi",
+            "label": "Bauchi",
+            "index": 5
+          },
+          {
+            "key": "bayelsa",
+            "value": "Bayelsa",
+            "label": "Bayelsa",
+            "index": 6
+          },
+          {
+            "key": "benue",
+            "value": "Benue",
+            "label": "Benue",
+            "index": 7
+          },
+          {
+            "key": "borno",
+            "value": "Borno",
+            "label": "Borno",
+            "index": 8
+          },
+          {
+            "key": "cross_river",
+            "value": "Cross River",
+            "label": "Cross River",
+            "index": 9
+          },
+          {
+            "key": "delta",
+            "value": "Delta",
+            "label": "Delta",
+            "index": 10
+          },
+          {
+            "key": "ebonyi",
+            "value": "Ebonyi",
+            "label": "Ebonyi",
+            "index": 11
+          },
+          {
+            "key": "edo",
+            "value": "Edo",
+            "label": "Edo",
+            "index": 12
+          },
+          {
+            "key": "ekiti",
+            "value": "Ekiti",
+            "label": "Ekiti",
+            "index": 13
+          },
+          {
+            "key": "enugu",
+            "value": "Enugu",
+            "label": "Enugu",
+            "index": 14
+          },
+          {
+            "key": "fct_abuja",
+            "value": "FCT Abuja",
+            "label": "FCT Abuja",
+            "index": 15
+          },
+          {
+            "key": "gombe",
+            "value": "Gombe",
+            "label": "Gombe",
+            "index": 16
+          },
+          {
+            "key": "imo",
+            "value": "Imo",
+            "label": "Imo",
+            "index": 17
+          },
+          {
+            "key": "jigawa",
+            "value": "Jigawa",
+            "label": "Jigawa",
+            "index": 18
+          },
+          {
+            "key": "kaduna",
+            "value": "Kaduna",
+            "label": "Kaduna",
+            "index": 19
+          },
+          {
+            "key": "kano",
+            "value": "Kano",
+            "label": "Kano",
+            "index": 20
+          },
+          {
+            "key": "katsina",
+            "value": "Katsina",
+            "label": "Katsina",
+            "index": 21
+          },
+          {
+            "key": "kebbi",
+            "value": "Kebbi",
+            "label": "Kebbi",
+            "index": 22
+          },
+          {
+            "key": "kogi",
+            "value": "Kogi",
+            "label": "Kogi",
+            "index": 23
+          },
+          {
+            "key": "kwara",
+            "value": "Kwara",
+            "label": "Kwara",
+            "index": 24
+          },
+          {
+            "key": "lagos",
+            "value": "Lagos",
+            "label": "Lagos",
+            "index": 25
+          },
+          {
+            "key": "nasarawa",
+            "value": "Nasarawa",
+            "label": "Nasarawa",
+            "index": 26
+          },
+          {
+            "key": "niger",
+            "value": "Niger",
+            "label": "Niger",
+            "index": 27
+          },
+          {
+            "key": "ogun",
+            "value": "Ogun",
+            "label": "Ogun",
+            "index": 28
+          },
+          {
+            "key": "ondo",
+            "value": "Ondo",
+            "label": "Ondo",
+            "index": 29
+          },
+          {
+            "key": "osun",
+            "value": "Osun",
+            "label": "Osun",
+            "index": 30
+          },
+          {
+            "key": "oyo",
+            "value": "Oyo",
+            "label": "Oyo",
+            "index": 31
+          },
+          {
+            "key": "plateau",
+            "value": "Plateau",
+            "label": "Plateau",
+            "index": 32
+          },
+          {
+            "key": "rivers",
+            "value": "Rivers",
+            "label": "Rivers",
+            "index": 33
+          },
+          {
+            "key": "sokoto",
+            "value": "Sokoto",
+            "label": "Sokoto",
+            "index": 34
+          },
+          {
+            "key": "taraba",
+            "value": "Taraba",
+            "label": "Taraba",
+            "index": 35
+          },
+          {
+            "key": "yobe",
+            "value": "Yobe",
+            "label": "Yobe",
+            "index": 36
+          },
+          {
+            "key": "zamfara",
+            "value": "Zamfara",
+            "label": "Zamfara",
+            "index": 37
+          }
+        ]
+      },
+      {
+        "text": "Local government area",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": true
+      },
+      {
+        "text": "Disease name",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "malaria",
+            "value": "Malaria",
+            "label": "Malaria",
+            "index": 1
+          },
+          {
+            "key": "cholera",
+            "value": "Cholera",
+            "label": "Cholera",
+            "index": 2
+          },
+          {
+            "key": "lassa_fever",
+            "value": "Lassa Fever",
+            "label": "Lassa Fever",
+            "index": 3
+          },
+          {
+            "key": "measles",
+            "value": "Measles",
+            "label": "Measles",
+            "index": 4
+          },
+          {
+            "key": "tuberculosis",
+            "value": "Tuberculosis",
+            "label": "Tuberculosis",
+            "index": 5
+          },
+          {
+            "key": "covid_19",
+            "value": "COVID-19",
+            "label": "COVID-19",
+            "index": 6
+          },
+          {
+            "key": "meningitis",
+            "value": "Meningitis",
+            "label": "Meningitis",
+            "index": 7
+          },
+          {
+            "key": "typhoid_fever",
+            "value": "Typhoid Fever",
+            "label": "Typhoid Fever",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Number of suspected cases",
+        "questionType": "number",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": true
+      },
+      {
+        "text": "Number of confirmed cases",
+        "questionType": "number",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 7,
+        "isRequired": true
+      },
+      {
+        "text": "Number of deaths",
+        "questionType": "number",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 8,
+        "isRequired": true
+      },
+      {
+        "text": "Date of report",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 9,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Patient Registration",
+    "code": "PATIENT_REGISTRATION",
+    "description": "Register a new patient profile for hospital services.",
+    "introduction": "Let's register your patient record.",
+    "conclusion": "Patient registration completed.",
+    "tags": [
+      "registration",
+      "patient"
+    ],
+    "questions": [
+      {
+        "text": "First name",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Last name",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 2,
+        "isRequired": true
+      },
+      {
+        "text": "Gender",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "male",
+            "value": "Male",
+            "label": "Male",
+            "index": 1
+          },
+          {
+            "key": "female",
+            "value": "Female",
+            "label": "Female",
+            "index": 2
+          },
+          {
+            "key": "other",
+            "value": "Other",
+            "label": "Other",
+            "index": 3
+          },
+          {
+            "key": "prefer_not_to_say",
+            "value": "Prefer not to say",
+            "label": "Prefer not to say",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Date of birth",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": true
+      },
+      {
+        "text": "Phone number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 5,
+        "isRequired": true
+      },
+      {
+        "text": "Email",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": false
+      },
+      {
+        "text": "State of origin",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 7,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "abia",
+            "value": "Abia",
+            "label": "Abia",
+            "index": 1
+          },
+          {
+            "key": "adamawa",
+            "value": "Adamawa",
+            "label": "Adamawa",
+            "index": 2
+          },
+          {
+            "key": "akwa_ibom",
+            "value": "Akwa Ibom",
+            "label": "Akwa Ibom",
+            "index": 3
+          },
+          {
+            "key": "anambra",
+            "value": "Anambra",
+            "label": "Anambra",
+            "index": 4
+          },
+          {
+            "key": "bauchi",
+            "value": "Bauchi",
+            "label": "Bauchi",
+            "index": 5
+          },
+          {
+            "key": "bayelsa",
+            "value": "Bayelsa",
+            "label": "Bayelsa",
+            "index": 6
+          },
+          {
+            "key": "benue",
+            "value": "Benue",
+            "label": "Benue",
+            "index": 7
+          },
+          {
+            "key": "borno",
+            "value": "Borno",
+            "label": "Borno",
+            "index": 8
+          },
+          {
+            "key": "cross_river",
+            "value": "Cross River",
+            "label": "Cross River",
+            "index": 9
+          },
+          {
+            "key": "delta",
+            "value": "Delta",
+            "label": "Delta",
+            "index": 10
+          },
+          {
+            "key": "ebonyi",
+            "value": "Ebonyi",
+            "label": "Ebonyi",
+            "index": 11
+          },
+          {
+            "key": "edo",
+            "value": "Edo",
+            "label": "Edo",
+            "index": 12
+          },
+          {
+            "key": "ekiti",
+            "value": "Ekiti",
+            "label": "Ekiti",
+            "index": 13
+          },
+          {
+            "key": "enugu",
+            "value": "Enugu",
+            "label": "Enugu",
+            "index": 14
+          },
+          {
+            "key": "fct_abuja",
+            "value": "FCT Abuja",
+            "label": "FCT Abuja",
+            "index": 15
+          },
+          {
+            "key": "gombe",
+            "value": "Gombe",
+            "label": "Gombe",
+            "index": 16
+          },
+          {
+            "key": "imo",
+            "value": "Imo",
+            "label": "Imo",
+            "index": 17
+          },
+          {
+            "key": "jigawa",
+            "value": "Jigawa",
+            "label": "Jigawa",
+            "index": 18
+          },
+          {
+            "key": "kaduna",
+            "value": "Kaduna",
+            "label": "Kaduna",
+            "index": 19
+          },
+          {
+            "key": "kano",
+            "value": "Kano",
+            "label": "Kano",
+            "index": 20
+          },
+          {
+            "key": "katsina",
+            "value": "Katsina",
+            "label": "Katsina",
+            "index": 21
+          },
+          {
+            "key": "kebbi",
+            "value": "Kebbi",
+            "label": "Kebbi",
+            "index": 22
+          },
+          {
+            "key": "kogi",
+            "value": "Kogi",
+            "label": "Kogi",
+            "index": 23
+          },
+          {
+            "key": "kwara",
+            "value": "Kwara",
+            "label": "Kwara",
+            "index": 24
+          },
+          {
+            "key": "lagos",
+            "value": "Lagos",
+            "label": "Lagos",
+            "index": 25
+          },
+          {
+            "key": "nasarawa",
+            "value": "Nasarawa",
+            "label": "Nasarawa",
+            "index": 26
+          },
+          {
+            "key": "niger",
+            "value": "Niger",
+            "label": "Niger",
+            "index": 27
+          },
+          {
+            "key": "ogun",
+            "value": "Ogun",
+            "label": "Ogun",
+            "index": 28
+          },
+          {
+            "key": "ondo",
+            "value": "Ondo",
+            "label": "Ondo",
+            "index": 29
+          },
+          {
+            "key": "osun",
+            "value": "Osun",
+            "label": "Osun",
+            "index": 30
+          },
+          {
+            "key": "oyo",
+            "value": "Oyo",
+            "label": "Oyo",
+            "index": 31
+          },
+          {
+            "key": "plateau",
+            "value": "Plateau",
+            "label": "Plateau",
+            "index": 32
+          },
+          {
+            "key": "rivers",
+            "value": "Rivers",
+            "label": "Rivers",
+            "index": 33
+          },
+          {
+            "key": "sokoto",
+            "value": "Sokoto",
+            "label": "Sokoto",
+            "index": 34
+          },
+          {
+            "key": "taraba",
+            "value": "Taraba",
+            "label": "Taraba",
+            "index": 35
+          },
+          {
+            "key": "yobe",
+            "value": "Yobe",
+            "label": "Yobe",
+            "index": 36
+          },
+          {
+            "key": "zamfara",
+            "value": "Zamfara",
+            "label": "Zamfara",
+            "index": 37
+          }
+        ]
+      },
+      {
+        "text": "Current residence state",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 8,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "abia",
+            "value": "Abia",
+            "label": "Abia",
+            "index": 1
+          },
+          {
+            "key": "adamawa",
+            "value": "Adamawa",
+            "label": "Adamawa",
+            "index": 2
+          },
+          {
+            "key": "akwa_ibom",
+            "value": "Akwa Ibom",
+            "label": "Akwa Ibom",
+            "index": 3
+          },
+          {
+            "key": "anambra",
+            "value": "Anambra",
+            "label": "Anambra",
+            "index": 4
+          },
+          {
+            "key": "bauchi",
+            "value": "Bauchi",
+            "label": "Bauchi",
+            "index": 5
+          },
+          {
+            "key": "bayelsa",
+            "value": "Bayelsa",
+            "label": "Bayelsa",
+            "index": 6
+          },
+          {
+            "key": "benue",
+            "value": "Benue",
+            "label": "Benue",
+            "index": 7
+          },
+          {
+            "key": "borno",
+            "value": "Borno",
+            "label": "Borno",
+            "index": 8
+          },
+          {
+            "key": "cross_river",
+            "value": "Cross River",
+            "label": "Cross River",
+            "index": 9
+          },
+          {
+            "key": "delta",
+            "value": "Delta",
+            "label": "Delta",
+            "index": 10
+          },
+          {
+            "key": "ebonyi",
+            "value": "Ebonyi",
+            "label": "Ebonyi",
+            "index": 11
+          },
+          {
+            "key": "edo",
+            "value": "Edo",
+            "label": "Edo",
+            "index": 12
+          },
+          {
+            "key": "ekiti",
+            "value": "Ekiti",
+            "label": "Ekiti",
+            "index": 13
+          },
+          {
+            "key": "enugu",
+            "value": "Enugu",
+            "label": "Enugu",
+            "index": 14
+          },
+          {
+            "key": "fct_abuja",
+            "value": "FCT Abuja",
+            "label": "FCT Abuja",
+            "index": 15
+          },
+          {
+            "key": "gombe",
+            "value": "Gombe",
+            "label": "Gombe",
+            "index": 16
+          },
+          {
+            "key": "imo",
+            "value": "Imo",
+            "label": "Imo",
+            "index": 17
+          },
+          {
+            "key": "jigawa",
+            "value": "Jigawa",
+            "label": "Jigawa",
+            "index": 18
+          },
+          {
+            "key": "kaduna",
+            "value": "Kaduna",
+            "label": "Kaduna",
+            "index": 19
+          },
+          {
+            "key": "kano",
+            "value": "Kano",
+            "label": "Kano",
+            "index": 20
+          },
+          {
+            "key": "katsina",
+            "value": "Katsina",
+            "label": "Katsina",
+            "index": 21
+          },
+          {
+            "key": "kebbi",
+            "value": "Kebbi",
+            "label": "Kebbi",
+            "index": 22
+          },
+          {
+            "key": "kogi",
+            "value": "Kogi",
+            "label": "Kogi",
+            "index": 23
+          },
+          {
+            "key": "kwara",
+            "value": "Kwara",
+            "label": "Kwara",
+            "index": 24
+          },
+          {
+            "key": "lagos",
+            "value": "Lagos",
+            "label": "Lagos",
+            "index": 25
+          },
+          {
+            "key": "nasarawa",
+            "value": "Nasarawa",
+            "label": "Nasarawa",
+            "index": 26
+          },
+          {
+            "key": "niger",
+            "value": "Niger",
+            "label": "Niger",
+            "index": 27
+          },
+          {
+            "key": "ogun",
+            "value": "Ogun",
+            "label": "Ogun",
+            "index": 28
+          },
+          {
+            "key": "ondo",
+            "value": "Ondo",
+            "label": "Ondo",
+            "index": 29
+          },
+          {
+            "key": "osun",
+            "value": "Osun",
+            "label": "Osun",
+            "index": 30
+          },
+          {
+            "key": "oyo",
+            "value": "Oyo",
+            "label": "Oyo",
+            "index": 31
+          },
+          {
+            "key": "plateau",
+            "value": "Plateau",
+            "label": "Plateau",
+            "index": 32
+          },
+          {
+            "key": "rivers",
+            "value": "Rivers",
+            "label": "Rivers",
+            "index": 33
+          },
+          {
+            "key": "sokoto",
+            "value": "Sokoto",
+            "label": "Sokoto",
+            "index": 34
+          },
+          {
+            "key": "taraba",
+            "value": "Taraba",
+            "label": "Taraba",
+            "index": 35
+          },
+          {
+            "key": "yobe",
+            "value": "Yobe",
+            "label": "Yobe",
+            "index": 36
+          },
+          {
+            "key": "zamfara",
+            "value": "Zamfara",
+            "label": "Zamfara",
+            "index": 37
+          }
+        ]
+      },
+      {
+        "text": "Address",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 9,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Patient Clock-In",
+    "code": "PATIENT_CLOCK_IN",
+    "description": "Log patient arrival and triage entry.",
+    "introduction": "Please provide check-in details.",
+    "conclusion": "Patient clock-in recorded.",
+    "tags": [
+      "check-in",
+      "triage"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Check-in channel",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "front_desk",
+            "value": "Front Desk",
+            "label": "Front Desk",
+            "index": 1
+          },
+          {
+            "key": "kiosk",
+            "value": "Kiosk",
+            "label": "Kiosk",
+            "index": 2
+          },
+          {
+            "key": "mobile_app",
+            "value": "Mobile App",
+            "label": "Mobile App",
+            "index": 3
+          },
+          {
+            "key": "referral_desk",
+            "value": "Referral Desk",
+            "label": "Referral Desk",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Visit type",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "consultation",
+            "value": "Consultation",
+            "label": "Consultation",
+            "index": 1
+          },
+          {
+            "key": "follow_up",
+            "value": "Follow-up",
+            "label": "Follow-up",
+            "index": 2
+          },
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 3
+          },
+          {
+            "key": "procedure",
+            "value": "Procedure",
+            "label": "Procedure",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Department to visit",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Pain score (0-10)",
+        "questionType": "number",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 5,
+        "isRequired": false
+      },
+      {
+        "text": "Primary complaint",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Appointment Scheduling",
+    "code": "APPOINTMENT_SCHEDULING",
+    "description": "Book patient appointments with department and physician.",
+    "introduction": "Provide details to schedule your appointment.",
+    "conclusion": "Appointment request submitted.",
+    "tags": [
+      "appointments",
+      "scheduling"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Department",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Reason for appointment",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": true
+      },
+      {
+        "text": "Preferred doctor",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": false
+      },
+      {
+        "text": "Preferred date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 5,
+        "isRequired": true
+      },
+      {
+        "text": "Preferred time",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 6,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "08_00_10_00",
+            "value": "08:00-10:00",
+            "label": "08:00-10:00",
+            "index": 1
+          },
+          {
+            "key": "10_00_12_00",
+            "value": "10:00-12:00",
+            "label": "10:00-12:00",
+            "index": 2
+          },
+          {
+            "key": "12_00_14_00",
+            "value": "12:00-14:00",
+            "label": "12:00-14:00",
+            "index": 3
+          },
+          {
+            "key": "14_00_16_00",
+            "value": "14:00-16:00",
+            "label": "14:00-16:00",
+            "index": 4
+          },
+          {
+            "key": "16_00_18_00",
+            "value": "16:00-18:00",
+            "label": "16:00-18:00",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Payment reference or insurance number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 7,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Analytics Report Request",
+    "code": "ANALYTICS_REPORT_REQUEST",
+    "description": "Submit requests for operational and clinical analytics.",
+    "introduction": "Tell us the analytics report you need.",
+    "conclusion": "Analytics request logged for processing.",
+    "tags": [
+      "analytics",
+      "reporting"
+    ],
+    "questions": [
+      {
+        "text": "Report category",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 1,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "patient_volume",
+            "value": "Patient Volume",
+            "label": "Patient Volume",
+            "index": 1
+          },
+          {
+            "key": "revenue",
+            "value": "Revenue",
+            "label": "Revenue",
+            "index": 2
+          },
+          {
+            "key": "disease_trend",
+            "value": "Disease Trend",
+            "label": "Disease Trend",
+            "index": 3
+          },
+          {
+            "key": "bed_occupancy",
+            "value": "Bed Occupancy",
+            "label": "Bed Occupancy",
+            "index": 4
+          },
+          {
+            "key": "lab_turnaround",
+            "value": "Lab Turnaround",
+            "label": "Lab Turnaround",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Report period",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "daily",
+            "value": "Daily",
+            "label": "Daily",
+            "index": 1
+          },
+          {
+            "key": "weekly",
+            "value": "Weekly",
+            "label": "Weekly",
+            "index": 2
+          },
+          {
+            "key": "monthly",
+            "value": "Monthly",
+            "label": "Monthly",
+            "index": 3
+          },
+          {
+            "key": "quarterly",
+            "value": "Quarterly",
+            "label": "Quarterly",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Start date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": true
+      },
+      {
+        "text": "End date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": true
+      },
+      {
+        "text": "Output format",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "pdf",
+            "value": "PDF",
+            "label": "PDF",
+            "index": 1
+          },
+          {
+            "key": "excel",
+            "value": "Excel",
+            "label": "Excel",
+            "index": 2
+          },
+          {
+            "key": "dashboard_link",
+            "value": "Dashboard Link",
+            "label": "Dashboard Link",
+            "index": 3
+          },
+          {
+            "key": "csv",
+            "value": "CSV",
+            "label": "CSV",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Recipient email",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Clinical Order Creation",
+    "code": "CLINICAL_ORDER_CREATION",
+    "description": "Capture a structured clinical order.",
+    "introduction": "Enter order details to proceed.",
+    "conclusion": "Clinical order created.",
+    "tags": [
+      "orders",
+      "clinical"
+    ],
+    "questions": [
+      {
+        "text": "Personnel initiating order",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Order type",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "prescription",
+            "value": "Prescription",
+            "label": "Prescription",
+            "index": 1
+          },
+          {
+            "key": "lab_test",
+            "value": "Lab Test",
+            "label": "Lab Test",
+            "index": 2
+          },
+          {
+            "key": "radiology",
+            "value": "Radiology",
+            "label": "Radiology",
+            "index": 3
+          },
+          {
+            "key": "procedure",
+            "value": "Procedure",
+            "label": "Procedure",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Order details",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": true
+      },
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": true
+      },
+      {
+        "text": "Priority level",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "routine",
+            "value": "Routine",
+            "label": "Routine",
+            "index": 1
+          },
+          {
+            "key": "urgent",
+            "value": "Urgent",
+            "label": "Urgent",
+            "index": 2
+          },
+          {
+            "key": "stat",
+            "value": "Stat",
+            "label": "Stat",
+            "index": 3
+          },
+          {
+            "key": "critical",
+            "value": "Critical",
+            "label": "Critical",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Requested department",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 6,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Requested execution date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 7,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Order Payment",
+    "code": "ORDER_PAYMENT",
+    "description": "Record payment details for a placed order.",
+    "introduction": "Provide payment details for this order.",
+    "conclusion": "Order payment recorded successfully.",
+    "tags": [
+      "orders",
+      "payment"
+    ],
+    "questions": [
+      {
+        "text": "Order number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 2,
+        "isRequired": true
+      },
+      {
+        "text": "Amount payable",
+        "questionType": "number",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": true
+      },
+      {
+        "text": "Payment type",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "cash",
+            "value": "Cash",
+            "label": "Cash",
+            "index": 1
+          },
+          {
+            "key": "card",
+            "value": "Card",
+            "label": "Card",
+            "index": 2
+          },
+          {
+            "key": "bank_transfer",
+            "value": "Bank Transfer",
+            "label": "Bank Transfer",
+            "index": 3
+          },
+          {
+            "key": "mobile_money",
+            "value": "Mobile Money",
+            "label": "Mobile Money",
+            "index": 4
+          },
+          {
+            "key": "insurance",
+            "value": "Insurance",
+            "label": "Insurance",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Transaction reference",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 5,
+        "isRequired": true
+      },
+      {
+        "text": "Payment date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Get Current Prescriptions",
+    "code": "GET_CURRENT_PRESCRIPTIONS",
+    "description": "Retrieve active prescriptions for a patient.",
+    "introduction": "Enter details to retrieve current prescriptions.",
+    "conclusion": "Prescription query submitted.",
+    "tags": [
+      "pharmacy",
+      "prescriptions"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Prescription status",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "active",
+            "value": "Active",
+            "label": "Active",
+            "index": 1
+          },
+          {
+            "key": "pending_refill",
+            "value": "Pending Refill",
+            "label": "Pending Refill",
+            "index": 2
+          },
+          {
+            "key": "expired",
+            "value": "Expired",
+            "label": "Expired",
+            "index": 3
+          },
+          {
+            "key": "all",
+            "value": "All",
+            "label": "All",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Medication category",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "antibiotics",
+            "value": "Antibiotics",
+            "label": "Antibiotics",
+            "index": 1
+          },
+          {
+            "key": "antimalarial",
+            "value": "Antimalarial",
+            "label": "Antimalarial",
+            "index": 2
+          },
+          {
+            "key": "analgesics",
+            "value": "Analgesics",
+            "label": "Analgesics",
+            "index": 3
+          },
+          {
+            "key": "antihypertensives",
+            "value": "Antihypertensives",
+            "label": "Antihypertensives",
+            "index": 4
+          },
+          {
+            "key": "others",
+            "value": "Others",
+            "label": "Others",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Prescriptions since date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": false
+      },
+      {
+        "text": "Delivery preference",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "sms_summary",
+            "value": "SMS Summary",
+            "label": "SMS Summary",
+            "index": 1
+          },
+          {
+            "key": "email_copy",
+            "value": "Email Copy",
+            "label": "Email Copy",
+            "index": 2
+          },
+          {
+            "key": "print_at_pharmacy",
+            "value": "Print at Pharmacy",
+            "label": "Print at Pharmacy",
+            "index": 3
+          },
+          {
+            "key": "patient_portal",
+            "value": "Patient Portal",
+            "label": "Patient Portal",
+            "index": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Query Last Appointment Summary",
+    "code": "QUERY_LAST_APPOINTMENT_SUMMARY",
+    "description": "Fetch summary of the latest completed appointment.",
+    "introduction": "Provide patient details for last appointment summary.",
+    "conclusion": "Last appointment summary request submitted.",
+    "tags": [
+      "appointments",
+      "summary"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Department visited",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Approximate appointment date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": false
+      },
+      {
+        "text": "Summary scope",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "doctor_notes",
+            "value": "Doctor Notes",
+            "label": "Doctor Notes",
+            "index": 1
+          },
+          {
+            "key": "diagnosis",
+            "value": "Diagnosis",
+            "label": "Diagnosis",
+            "index": 2
+          },
+          {
+            "key": "prescriptions",
+            "value": "Prescriptions",
+            "label": "Prescriptions",
+            "index": 3
+          },
+          {
+            "key": "full_visit_summary",
+            "value": "Full Visit Summary",
+            "label": "Full Visit Summary",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Delivery channel",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "sms",
+            "value": "SMS",
+            "label": "SMS",
+            "index": 1
+          },
+          {
+            "key": "email",
+            "value": "Email",
+            "label": "Email",
+            "index": 2
+          },
+          {
+            "key": "patient_portal",
+            "value": "Patient Portal",
+            "label": "Patient Portal",
+            "index": 3
+          },
+          {
+            "key": "printed_copy",
+            "value": "Printed Copy",
+            "label": "Printed Copy",
+            "index": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Patient Feedback Survey",
+    "code": "PATIENT_FEEDBACK_SURVEY",
+    "description": "Collect patient service satisfaction feedback.",
+    "introduction": "Please share feedback about your hospital experience.",
+    "conclusion": "Thank you for your feedback.",
+    "tags": [
+      "feedback",
+      "quality"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": false
+      },
+      {
+        "text": "Department visited",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "How would you rate waiting time?",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "excellent",
+            "value": "Excellent",
+            "label": "Excellent",
+            "index": 1
+          },
+          {
+            "key": "good",
+            "value": "Good",
+            "label": "Good",
+            "index": 2
+          },
+          {
+            "key": "fair",
+            "value": "Fair",
+            "label": "Fair",
+            "index": 3
+          },
+          {
+            "key": "poor",
+            "value": "Poor",
+            "label": "Poor",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "How would you rate staff attitude?",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "excellent",
+            "value": "Excellent",
+            "label": "Excellent",
+            "index": 1
+          },
+          {
+            "key": "good",
+            "value": "Good",
+            "label": "Good",
+            "index": 2
+          },
+          {
+            "key": "fair",
+            "value": "Fair",
+            "label": "Fair",
+            "index": 3
+          },
+          {
+            "key": "poor",
+            "value": "Poor",
+            "label": "Poor",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "How would you rate facility cleanliness?",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "excellent",
+            "value": "Excellent",
+            "label": "Excellent",
+            "index": 1
+          },
+          {
+            "key": "good",
+            "value": "Good",
+            "label": "Good",
+            "index": 2
+          },
+          {
+            "key": "fair",
+            "value": "Fair",
+            "label": "Fair",
+            "index": 3
+          },
+          {
+            "key": "poor",
+            "value": "Poor",
+            "label": "Poor",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Would you recommend this hospital?",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 6,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "definitely",
+            "value": "Definitely",
+            "label": "Definitely",
+            "index": 1
+          },
+          {
+            "key": "probably",
+            "value": "Probably",
+            "label": "Probably",
+            "index": 2
+          },
+          {
+            "key": "not_sure",
+            "value": "Not Sure",
+            "label": "Not Sure",
+            "index": 3
+          },
+          {
+            "key": "no",
+            "value": "No",
+            "label": "No",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Additional comments",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 7,
+        "isRequired": false
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Staff Incident Report",
+    "code": "STAFF_INCIDENT_REPORT",
+    "description": "Log incidents involving staff safety or operations.",
+    "introduction": "Complete this incident report form.",
+    "conclusion": "Incident report submitted to administration.",
+    "tags": [
+      "staff",
+      "incident",
+      "safety"
+    ],
+    "questions": [
+      {
+        "text": "Reporting staff name",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Department",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Incident category",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "clinical_error",
+            "value": "Clinical Error",
+            "label": "Clinical Error",
+            "index": 1
+          },
+          {
+            "key": "workplace_injury",
+            "value": "Workplace Injury",
+            "label": "Workplace Injury",
+            "index": 2
+          },
+          {
+            "key": "security",
+            "value": "Security",
+            "label": "Security",
+            "index": 3
+          },
+          {
+            "key": "equipment_failure",
+            "value": "Equipment Failure",
+            "label": "Equipment Failure",
+            "index": 4
+          },
+          {
+            "key": "other",
+            "value": "Other",
+            "label": "Other",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Incident date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": true
+      },
+      {
+        "text": "Incident location",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 5,
+        "isRequired": true
+      },
+      {
+        "text": "Severity level",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 6,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "low",
+            "value": "Low",
+            "label": "Low",
+            "index": 1
+          },
+          {
+            "key": "medium",
+            "value": "Medium",
+            "label": "Medium",
+            "index": 2
+          },
+          {
+            "key": "high",
+            "value": "High",
+            "label": "High",
+            "index": 3
+          },
+          {
+            "key": "critical",
+            "value": "Critical",
+            "label": "Critical",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Persons involved",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 7,
+        "isRequired": true
+      },
+      {
+        "text": "Immediate action taken",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 8,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Medication Adverse Event Report",
+    "code": "MEDICATION_ADVERSE_EVENT_REPORT",
+    "description": "Capture suspected adverse medication events.",
+    "introduction": "Record details of the adverse medication event.",
+    "conclusion": "Adverse event report captured.",
+    "tags": [
+      "pharmacovigilance",
+      "safety"
+    ],
+    "questions": [
+      {
+        "text": "Reporter name",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 2,
+        "isRequired": true
+      },
+      {
+        "text": "Suspected medication",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": true
+      },
+      {
+        "text": "Reaction type",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "rash",
+            "value": "Rash",
+            "label": "Rash",
+            "index": 1
+          },
+          {
+            "key": "anaphylaxis",
+            "value": "Anaphylaxis",
+            "label": "Anaphylaxis",
+            "index": 2
+          },
+          {
+            "key": "nausea_vomiting",
+            "value": "Nausea/Vomiting",
+            "label": "Nausea/Vomiting",
+            "index": 3
+          },
+          {
+            "key": "dizziness",
+            "value": "Dizziness",
+            "label": "Dizziness",
+            "index": 4
+          },
+          {
+            "key": "other",
+            "value": "Other",
+            "label": "Other",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Seriousness",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "mild",
+            "value": "Mild",
+            "label": "Mild",
+            "index": 1
+          },
+          {
+            "key": "moderate",
+            "value": "Moderate",
+            "label": "Moderate",
+            "index": 2
+          },
+          {
+            "key": "severe",
+            "value": "Severe",
+            "label": "Severe",
+            "index": 3
+          },
+          {
+            "key": "life_threatening",
+            "value": "Life-threatening",
+            "label": "Life-threatening",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Date reaction started",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": true
+      },
+      {
+        "text": "Outcome",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 7,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "recovered",
+            "value": "Recovered",
+            "label": "Recovered",
+            "index": 1
+          },
+          {
+            "key": "recovering",
+            "value": "Recovering",
+            "label": "Recovering",
+            "index": 2
+          },
+          {
+            "key": "not_recovered",
+            "value": "Not Recovered",
+            "label": "Not Recovered",
+            "index": 3
+          },
+          {
+            "key": "fatal",
+            "value": "Fatal",
+            "label": "Fatal",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Medication stopped?",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 8,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "yes",
+            "value": "Yes",
+            "label": "Yes",
+            "index": 1
+          },
+          {
+            "key": "no",
+            "value": "No",
+            "label": "No",
+            "index": 2
+          },
+          {
+            "key": "dose_reduced",
+            "value": "Dose Reduced",
+            "label": "Dose Reduced",
+            "index": 3
+          },
+          {
+            "key": "unknown",
+            "value": "Unknown",
+            "label": "Unknown",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Clinical notes",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 9,
+        "isRequired": false
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Referral Request",
+    "code": "REFERRAL_REQUEST",
+    "description": "Request interdepartmental or external patient referral.",
+    "introduction": "Provide details for referral processing.",
+    "conclusion": "Referral request submitted.",
+    "tags": [
+      "referral",
+      "care-coordination"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Current department",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Referral destination",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Reason for referral",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": true
+      },
+      {
+        "text": "Urgency",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "routine",
+            "value": "Routine",
+            "label": "Routine",
+            "index": 1
+          },
+          {
+            "key": "urgent",
+            "value": "Urgent",
+            "label": "Urgent",
+            "index": 2
+          },
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 3
+          },
+          {
+            "key": "immediate",
+            "value": "Immediate",
+            "label": "Immediate",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Referring clinician",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": true
+      },
+      {
+        "text": "Supporting notes",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 7,
+        "isRequired": false
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Medical Certificate Request",
+    "code": "MEDICAL_CERTIFICATE_REQUEST",
+    "description": "Request issuance of a medical certificate.",
+    "introduction": "Complete this request for medical certificate issuance.",
+    "conclusion": "Medical certificate request received.",
+    "tags": [
+      "documents",
+      "certificate"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Certificate type",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "fitness_to_work",
+            "value": "Fitness to Work",
+            "label": "Fitness to Work",
+            "index": 1
+          },
+          {
+            "key": "sick_leave",
+            "value": "Sick Leave",
+            "label": "Sick Leave",
+            "index": 2
+          },
+          {
+            "key": "school_fitness",
+            "value": "School Fitness",
+            "label": "School Fitness",
+            "index": 3
+          },
+          {
+            "key": "travel_fitness",
+            "value": "Travel Fitness",
+            "label": "Travel Fitness",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Reason for request",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "employment",
+            "value": "Employment",
+            "label": "Employment",
+            "index": 1
+          },
+          {
+            "key": "school",
+            "value": "School",
+            "label": "School",
+            "index": 2
+          },
+          {
+            "key": "travel",
+            "value": "Travel",
+            "label": "Travel",
+            "index": 3
+          },
+          {
+            "key": "insurance",
+            "value": "Insurance",
+            "label": "Insurance",
+            "index": 4
+          },
+          {
+            "key": "legal",
+            "value": "Legal",
+            "label": "Legal",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Certificate start date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": true
+      },
+      {
+        "text": "Certificate end date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 5,
+        "isRequired": false
+      },
+      {
+        "text": "Delivery mode",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 6,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "email",
+            "value": "Email",
+            "label": "Email",
+            "index": 1
+          },
+          {
+            "key": "pickup_at_records",
+            "value": "Pickup at Records",
+            "label": "Pickup at Records",
+            "index": 2
+          },
+          {
+            "key": "courier",
+            "value": "Courier",
+            "label": "Courier",
+            "index": 3
+          },
+          {
+            "key": "patient_portal",
+            "value": "Patient Portal",
+            "label": "Patient Portal",
+            "index": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Discharge Summary Query",
+    "code": "DISCHARGE_SUMMARY_QUERY",
+    "description": "Retrieve discharge summary details for a past admission.",
+    "introduction": "Provide admission details to retrieve discharge summary.",
+    "conclusion": "Discharge summary query submitted.",
+    "tags": [
+      "discharge",
+      "records"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Admission number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 2,
+        "isRequired": true
+      },
+      {
+        "text": "Discharge date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": false
+      },
+      {
+        "text": "Summary section needed",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "diagnosis",
+            "value": "Diagnosis",
+            "label": "Diagnosis",
+            "index": 1
+          },
+          {
+            "key": "treatment_given",
+            "value": "Treatment Given",
+            "label": "Treatment Given",
+            "index": 2
+          },
+          {
+            "key": "medications",
+            "value": "Medications",
+            "label": "Medications",
+            "index": 3
+          },
+          {
+            "key": "full_summary",
+            "value": "Full Summary",
+            "label": "Full Summary",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Preferred delivery channel",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "sms",
+            "value": "SMS",
+            "label": "SMS",
+            "index": 1
+          },
+          {
+            "key": "email",
+            "value": "Email",
+            "label": "Email",
+            "index": 2
+          },
+          {
+            "key": "patient_portal",
+            "value": "Patient Portal",
+            "label": "Patient Portal",
+            "index": 3
+          },
+          {
+            "key": "records_desk",
+            "value": "Records Desk",
+            "label": "Records Desk",
+            "index": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Bed Availability Check",
+    "code": "BED_AVAILABILITY_CHECK",
+    "description": "Check bed availability by ward and urgency.",
+    "introduction": "Enter requirements to check bed availability.",
+    "conclusion": "Bed availability request submitted.",
+    "tags": [
+      "admission",
+      "beds"
+    ],
+    "questions": [
+      {
+        "text": "Ward type",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 1,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "general_ward",
+            "value": "General Ward",
+            "label": "General Ward",
+            "index": 1
+          },
+          {
+            "key": "private_ward",
+            "value": "Private Ward",
+            "label": "Private Ward",
+            "index": 2
+          },
+          {
+            "key": "icu",
+            "value": "ICU",
+            "label": "ICU",
+            "index": 3
+          },
+          {
+            "key": "pediatrics_ward",
+            "value": "Pediatrics Ward",
+            "label": "Pediatrics Ward",
+            "index": 4
+          },
+          {
+            "key": "maternity_ward",
+            "value": "Maternity Ward",
+            "label": "Maternity Ward",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Department",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Gender category",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "male",
+            "value": "Male",
+            "label": "Male",
+            "index": 1
+          },
+          {
+            "key": "female",
+            "value": "Female",
+            "label": "Female",
+            "index": 2
+          },
+          {
+            "key": "any",
+            "value": "Any",
+            "label": "Any",
+            "index": 3
+          },
+          {
+            "key": "pediatric",
+            "value": "Pediatric",
+            "label": "Pediatric",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Urgency level",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "routine",
+            "value": "Routine",
+            "label": "Routine",
+            "index": 1
+          },
+          {
+            "key": "urgent",
+            "value": "Urgent",
+            "label": "Urgent",
+            "index": 2
+          },
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 3
+          },
+          {
+            "key": "critical",
+            "value": "Critical",
+            "label": "Critical",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Expected admission date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 5,
+        "isRequired": true
+      },
+      {
+        "text": "Contact person phone",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": true
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Lab Result Query",
+    "code": "LAB_RESULT_QUERY",
+    "description": "Request available laboratory test results.",
+    "introduction": "Provide details to retrieve lab results.",
+    "conclusion": "Lab result request received.",
+    "tags": [
+      "laboratory",
+      "results"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Lab order number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 2,
+        "isRequired": true
+      },
+      {
+        "text": "Test group",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 3,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "hematology",
+            "value": "Hematology",
+            "label": "Hematology",
+            "index": 1
+          },
+          {
+            "key": "chemistry",
+            "value": "Chemistry",
+            "label": "Chemistry",
+            "index": 2
+          },
+          {
+            "key": "microbiology",
+            "value": "Microbiology",
+            "label": "Microbiology",
+            "index": 3
+          },
+          {
+            "key": "serology",
+            "value": "Serology",
+            "label": "Serology",
+            "index": 4
+          },
+          {
+            "key": "histopathology",
+            "value": "Histopathology",
+            "label": "Histopathology",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Sample collection date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": false
+      },
+      {
+        "text": "Result status",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "pending",
+            "value": "Pending",
+            "label": "Pending",
+            "index": 1
+          },
+          {
+            "key": "completed",
+            "value": "Completed",
+            "label": "Completed",
+            "index": 2
+          },
+          {
+            "key": "validated",
+            "value": "Validated",
+            "label": "Validated",
+            "index": 3
+          },
+          {
+            "key": "released",
+            "value": "Released",
+            "label": "Released",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Delivery preference",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 6,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "sms_notification",
+            "value": "SMS Notification",
+            "label": "SMS Notification",
+            "index": 1
+          },
+          {
+            "key": "email_pdf",
+            "value": "Email PDF",
+            "label": "Email PDF",
+            "index": 2
+          },
+          {
+            "key": "patient_portal",
+            "value": "Patient Portal",
+            "label": "Patient Portal",
+            "index": 3
+          },
+          {
+            "key": "print_at_lab",
+            "value": "Print at Lab",
+            "label": "Print at Lab",
+            "index": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Radiology Order Request",
+    "code": "RADIOLOGY_ORDER_REQUEST",
+    "description": "Request and prioritize radiology imaging orders.",
+    "introduction": "Enter details for the radiology request.",
+    "conclusion": "Radiology order submitted.",
+    "tags": [
+      "radiology",
+      "orders"
+    ],
+    "questions": [
+      {
+        "text": "Personnel initiating order",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Order type",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 2,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "x_ray",
+            "value": "X-Ray",
+            "label": "X-Ray",
+            "index": 1
+          },
+          {
+            "key": "ct_scan",
+            "value": "CT Scan",
+            "label": "CT Scan",
+            "index": 2
+          },
+          {
+            "key": "mri",
+            "value": "MRI",
+            "label": "MRI",
+            "index": 3
+          },
+          {
+            "key": "ultrasound",
+            "value": "Ultrasound",
+            "label": "Ultrasound",
+            "index": 4
+          },
+          {
+            "key": "mammography",
+            "value": "Mammography",
+            "label": "Mammography",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Order details",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": true
+      },
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 4,
+        "isRequired": true
+      },
+      {
+        "text": "Priority level",
+        "questionType": "single_choice",
+        "renderMode": "radio",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "routine",
+            "value": "Routine",
+            "label": "Routine",
+            "index": 1
+          },
+          {
+            "key": "urgent",
+            "value": "Urgent",
+            "label": "Urgent",
+            "index": 2
+          },
+          {
+            "key": "stat",
+            "value": "Stat",
+            "label": "Stat",
+            "index": 3
+          },
+          {
+            "key": "critical",
+            "value": "Critical",
+            "label": "Critical",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Body region",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 6,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "head_neck",
+            "value": "Head/Neck",
+            "label": "Head/Neck",
+            "index": 1
+          },
+          {
+            "key": "chest",
+            "value": "Chest",
+            "label": "Chest",
+            "index": 2
+          },
+          {
+            "key": "abdomen_pelvis",
+            "value": "Abdomen/Pelvis",
+            "label": "Abdomen/Pelvis",
+            "index": 3
+          },
+          {
+            "key": "spine",
+            "value": "Spine",
+            "label": "Spine",
+            "index": 4
+          },
+          {
+            "key": "extremities",
+            "value": "Extremities",
+            "label": "Extremities",
+            "index": 5
+          }
+        ]
+      },
+      {
+        "text": "Contrast required?",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 7,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "yes",
+            "value": "Yes",
+            "label": "Yes",
+            "index": 1
+          },
+          {
+            "key": "no",
+            "value": "No",
+            "label": "No",
+            "index": 2
+          },
+          {
+            "key": "maybe",
+            "value": "Maybe",
+            "label": "Maybe",
+            "index": 3
+          },
+          {
+            "key": "not_sure",
+            "value": "Not Sure",
+            "label": "Not Sure",
+            "index": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "isDynamic": false,
+    "version": 1,
+    "allowBackNavigation": true,
+    "allowMultipleSessions": false,
+    "processingStrategy": "STATIC",
+    "isActive": true,
+    "endPhrase": "STOP",
+    "name": "Insurance Eligibility Check",
+    "code": "INSURANCE_ELIGIBILITY_CHECK",
+    "description": "Verify active insurance eligibility before service.",
+    "introduction": "Provide details for insurance eligibility verification.",
+    "conclusion": "Insurance eligibility check submitted.",
+    "tags": [
+      "insurance",
+      "eligibility"
+    ],
+    "questions": [
+      {
+        "text": "Patient number",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 1,
+        "isRequired": true
+      },
+      {
+        "text": "Insurance provider",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 2,
+        "isRequired": true
+      },
+      {
+        "text": "Insurance member ID",
+        "questionType": "text",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 3,
+        "isRequired": true
+      },
+      {
+        "text": "Coverage type",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 4,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "inpatient",
+            "value": "Inpatient",
+            "label": "Inpatient",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "maternity",
+            "value": "Maternity",
+            "label": "Maternity",
+            "index": 3
+          },
+          {
+            "key": "comprehensive",
+            "value": "Comprehensive",
+            "label": "Comprehensive",
+            "index": 4
+          }
+        ]
+      },
+      {
+        "text": "Service department",
+        "questionType": "single_choice",
+        "renderMode": "dropdown",
+        "processMode": "option_processed",
+        "index": 5,
+        "isRequired": true,
+        "options": [
+          {
+            "key": "emergency",
+            "value": "Emergency",
+            "label": "Emergency",
+            "index": 1
+          },
+          {
+            "key": "outpatient",
+            "value": "Outpatient",
+            "label": "Outpatient",
+            "index": 2
+          },
+          {
+            "key": "pediatrics",
+            "value": "Pediatrics",
+            "label": "Pediatrics",
+            "index": 3
+          },
+          {
+            "key": "obstetrics_and_gynecology",
+            "value": "Obstetrics and Gynecology",
+            "label": "Obstetrics and Gynecology",
+            "index": 4
+          },
+          {
+            "key": "internal_medicine",
+            "value": "Internal Medicine",
+            "label": "Internal Medicine",
+            "index": 5
+          },
+          {
+            "key": "surgery",
+            "value": "Surgery",
+            "label": "Surgery",
+            "index": 6
+          },
+          {
+            "key": "cardiology",
+            "value": "Cardiology",
+            "label": "Cardiology",
+            "index": 7
+          },
+          {
+            "key": "orthopedics",
+            "value": "Orthopedics",
+            "label": "Orthopedics",
+            "index": 8
+          }
+        ]
+      },
+      {
+        "text": "Planned service date",
+        "questionType": "date",
+        "renderMode": "input",
+        "processMode": "none",
+        "index": 6,
+        "isRequired": true
+      }
+    ]
+  }
+]

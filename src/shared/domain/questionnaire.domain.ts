@@ -16,6 +16,7 @@ export type Questionnaire = {
 
   // Flow control
   startQuestionId?: string;
+  endPhrase: string;
   allowBackNavigation: boolean;
   allowMultipleSessions: boolean;
 

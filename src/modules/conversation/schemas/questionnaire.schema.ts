@@ -35,6 +35,10 @@ export class Questionnaire {
   @Prop()
   startQuestionId?: string;
 
+  // Flow control
+  @Prop()
+  endPhrase: string;
+
   @Prop({ required: true, default: true })
   allowBackNavigation: boolean;
 

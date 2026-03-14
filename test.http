@@ -13,3 +13,147 @@ curl -X POST "https://graph.facebook.com/v22.0/1046591291866828/register" \
     "messaging_product": "whatsapp",
     "pin": "196300"
   }'
+
+
+###Receive message webhook
+  curl -X 'POST' \
+  'http://localhost:8080/api/webhooks/whatsapp' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "123456789",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "1234567890",
+              "phone_number_id": "123456789012345"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "John Doe"
+                },
+                "wa_id": "2348022224166"
+              }
+            ],
+            "messages": [
+              {
+                "from": "2348012345678",
+                "id": "wamid.HBgMNT...",
+                "timestamp": "1700000000",
+                "type": "text",
+                "text": {
+                  "body": "Hello from WhatsApp"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}'
+
+
+###Receive  status webhook
+curl -X 'POST' \
+  'http://localhost:8080/api/webhooks/whatsapp' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "123456789",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "1234567890",
+              "phone_number_id": "123456789012345"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "John Doe"
+                },
+                "wa_id": "234815048728"
+              }
+            ],
+            "messages": [
+              {
+                "from": "2348012345678",
+                "id": "wamid.HBgMNT...",
+                "timestamp": "1700000000",
+                "type": "text",
+                "text": {
+                  "body": "Hello from WhatsApp"
+                },
+                "image": {
+                  "id": "1234567890",
+                  "mime_type": "image/jpeg",
+                  "sha256": "abcdef1234567890",
+                  "caption": "image caption",
+                  "filename": "photo.jpg"
+                },
+                "document": {
+                  "id": "1234567890",
+                  "mime_type": "image/jpeg",
+                  "sha256": "abcdef1234567890",
+                  "caption": "image caption",
+                  "filename": "photo.jpg"
+                },
+                "audio": {
+                  "id": "1234567890",
+                  "mime_type": "image/jpeg",
+                  "sha256": "abcdef1234567890",
+                  "caption": "image caption",
+                  "filename": "photo.jpg"
+                },
+                "video": {
+                  "id": "1234567890",
+                  "mime_type": "image/jpeg",
+                  "sha256": "abcdef1234567890",
+                  "caption": "image caption",
+                  "filename": "photo.jpg"
+                },
+                "location": {
+                  "latitude": 6.5244,
+                  "longitude": 3.3792,
+                  "name": "Victoria Island",
+                  "address": "Lagos, Nigeria"
+                }
+              }
+            ],
+            "statuses": [
+              {
+                "id": "wamid.HBgLMjM0ODE1MDQ4NzgyOBUCABEYEjQ2Q0M4ODVGRkI2RjYyNDc5AA==",
+                "status": "delivered",
+                "timestamp": "1710060212",
+                "recipient_id": "2348150487828"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}'
+
+### Send Question
+curl -X 'POST' \
+  'http://localhost:8080/api/channels/69aca4cd84a4eab2c5b98b3a/send-message' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "recipient": "2348022224166",
+  "message": "Hello"
+}'

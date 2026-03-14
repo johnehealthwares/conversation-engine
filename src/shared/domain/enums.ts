@@ -39,7 +39,9 @@ export enum ResponseDirection {
 
 export enum ConversationState {
   START = 'START',
-  PROGRESS = 'PROGRESS',
+  PROCESSING = 'PROCESSING',
+  WAITING_FOR_DELIVERY = 'WAITING_FOR_DELIVERY',
+  WAITING_FOR_USER = 'WAITING_FOR_USER',
   COMPLETED = 'COMPLETED',
 }
 
@@ -55,5 +57,6 @@ export enum ChannelType {
 export enum ConversationStatus {
   ACTIVE = 'ACTIVE',
   COMPLETED = 'COMPLETED',
+  STOPPED = 'STOPPED',
   CANCELLED = 'CANCELLED',
 }

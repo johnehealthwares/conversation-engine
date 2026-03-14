@@ -12,4 +12,6 @@ export type Conversation = {
      state: ConversationState;
      startedAt?: Date;
      endedAt?: Date;
+     pendingMessages?: string[];
+     awaitingUserReply?: boolean;
 }

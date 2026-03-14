@@ -19,6 +19,12 @@ import { ExchangeStatus } from '../schemas/exchange.schema';
   }[];
 }
 
+
+type ParsedControl = {
+  text: string;
+  options: { id: string; title: string }[];
+};
+
 interface WhatsAppTemplateParams {
   to: string; // recipient phone number in international format
   templateName: string; // name of the template in WhatsApp
@@ -39,21 +45,17 @@ export class WhatsappSender implements ChannelSender {
   async sendMessage(
     destination: ParticipantDomain,
     message: string,
-    context?: Record<string, any>,
+    context: Record<string, any>,
   ): Promise<void> {
     const config = this.getConfig();
-
-    try {
-      const response = await axios.post<WhatsAppSendMessageResponse>(
-        config.messagesUrl,
-        {
+    const request = {
           messaging_product: 'whatsapp',
           to: destination.phone,
-          type: 'text',
-          text: {
-            body: message,
-          },
-        },
+          ...this.buildWhatsAppControl(message, +context.page)
+        };
+    try {
+      const axiosResponse = await axios.post<WhatsAppSendMessageResponse>(
+        config.messagesUrl, request,
         {
           headers: {
             Authorization: `Bearer ${config.token}`,
@@ -61,8 +63,8 @@ export class WhatsappSender implements ChannelSender {
           },
         },
       );
-      const providerResponse = response?.data;
-      const messageId = providerResponse?.messages?.[0]?.id;
+      const response = axiosResponse?.data;
+      const messageId = response?.messages?.[0]?.id;
 
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
@@ -74,14 +76,16 @@ export class WhatsappSender implements ChannelSender {
         metadata: context,
         messageId,
         rawPayload: {
-          providerResponse,
+          provider: 'MetaWhatsApp',
+          request,
+          response
         },
       });
     } catch (error: any) {
       const err = error?.response?.data || error.message;
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
-        channelType: 'WHATSAPP',
+        channelType: ChannelType.WHATSAPP,
         recipient: destination.phone!,
         message,
         messageId: 'error',
@@ -90,15 +94,11 @@ export class WhatsappSender implements ChannelSender {
         metadata: context,
         rawPayload: {
           provider: 'MetaWhatsApp',
+          request,
           error: err,
         },
         status: ExchangeStatus.FAILED,
       });
-
-      throw new HttpException(
-        `WhatsApp send failed: ${JSON.stringify(err)}`,
-        HttpStatus.BAD_GATEWAY,
-      );
     }
   }
 
@@ -284,11 +284,140 @@ export class WhatsappSender implements ChannelSender {
     }
   }
 
+
+private parseControlString(input: string): ParsedControl {
+  const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const text = lines[0];
+
+  const options = lines.slice(1).map(line => {
+    const [id, title] = line.split(':').map(p => p.trim());
+
+    return {
+      id,
+      title: title.substring(0, 23)
+    };
+  });
+
+  return { text, options };
+}
+
+private buildWhatsAppControl(input: string, page: number = 0) {
+  const parsed = this.parseControlString(input);
+  if(isNaN(page))page = 0;
+  if (!parsed.options.length) {
+    return {
+      type: "text",
+      text: { body: input },
+    };
+  }
+
+  // Buttons if <=3 options
+  if (parsed.options.length <= 3) {
+    return {
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: parsed.text },
+        action: {
+          buttons: parsed.options.map((o) => ({
+            type: "reply",
+            reply: {
+              id: o.id,
+              title: o.title.slice(0, 20),
+            },
+          })),
+        },
+      },
+    };
+  }
+
+  const options = parsed.options;
+  const totalOptions = options.length;
+
+  // Determine total pages
+  let pageSizeFirst = 10;
+  if (totalOptions > 10) pageSizeFirst = 9; // first page leaves space for Next
+
+  let totalPages: number;
+  if (totalOptions <= 10) {
+    totalPages = 1;
+  } else {
+    const remaining = totalOptions - 9;
+    totalPages = 1 + Math.ceil(remaining / 8);
+  }
+
+  // Calculate start index for current page
+  let start = 0;
+  if (page === 0) start = 0;
+  else start = 9 + (page - 1) * 8;
+
+  // Determine how many options this page can show
+  let pageSize = 10; // max rows
+  const hasPrev = page > 0;
+  const remainingOptions = totalOptions - start;
+
+  if (page === 0) {
+    pageSize = totalOptions > 10 ? 9 : remainingOptions; // first page
+  } else if (page < totalPages - 1) {
+    pageSize = 8; // middle pages have Prev + Next
+  } else {
+    pageSize = remainingOptions + (hasPrev ? 1 : 0); // last page may include Prev
+    if (pageSize > 10) pageSize = 10; // safety
+  }
+
+  const pageOptions = options.slice(start, start + pageSize - (hasPrev && page < totalPages - 1 ? 1 : 0));
+
+  // Build rows
+  const rows: any[] = [];
+
+  if (hasPrev) {
+    rows.push({
+      id: `page_rqst_prev_${page - 1}`,
+      title: "⬅ Previous",
+    });
+  }
+
+  rows.push(
+    ...pageOptions.map((o) => ({
+      id: o.id,
+      title: o.title.slice(0, 24),
+    })),
+  );
+
+  const isLastPage = start + pageOptions.length >= totalOptions;
+
+  if (!isLastPage) {
+    rows.push({
+      id: `page_rqst_next_${page + 1}`,
+      title: "Next ➡",
+    });
+  }
+
+  return {
+    type: "interactive",
+    interactive: {
+      type: "list",
+      body: {
+        text: parsed.text,
+      },
+      action: {
+        button: `Select (${page + 1}/${totalPages} Lists)`,
+        sections: [
+          {
+            title: "Options",
+            rows,
+          },
+        ],
+      },
+    },
+  };
+}
+
   private getConfig() {
     const phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID');
     const token = this.configService.get<string>('WHATSAPP_ACCESS_TOKEN');
-    const apiVersion =
-      this.configService.get<string>('WHATSAPP_API_VERSION') || 'v19.0';
+    const apiVersion = this.configService.get<string>('WHATSAPP_API_VERSION') || 'v19.0';
 
     if (!phoneNumberId || !token) {
       throw new HttpException(
@@ -304,4 +433,6 @@ export class WhatsappSender implements ChannelSender {
       mediaUrl: `${baseUrl}/media`,
     };
   }
+
+  
 }

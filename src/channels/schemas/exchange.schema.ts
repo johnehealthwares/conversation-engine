@@ -40,7 +40,8 @@ export class Exchange {
   @Prop( { required: true })
   messageId: string;
 
-  message?: string;
+  @Prop( { required: true })
+  message: string;
 
   @Prop()
   conversationId?: string;
@@ -61,7 +62,7 @@ export class Exchange {
   sentAt?: string;
 
   @Prop({ type: Date })
-  delivered?: string;
+  deliveredAt?: string;
 
   @Prop({ type: Date })
   readAt?: string;

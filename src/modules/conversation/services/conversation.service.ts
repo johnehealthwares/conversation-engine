@@ -81,6 +81,9 @@ export class ConversationService {
       questionnaireCode: conversation.questionnaireId,
       source: 'conversation_service',
     });
+    await this.conversationRepository.save(conversation.id!, {
+    state: ConversationState.WAITING_FOR_USER,
+  });
     await this.responseService.saveOutboundResponse(
       conversation,
       message,
@@ -91,8 +94,8 @@ export class ConversationService {
   private async sendInitMessage(channelId, participant: ParticipantDomain) {
     const sender = await this.senderFactory.getSender(channelId);
     const questionnaires = await this.questionnaireService.getInitQuestionnaires();
-    const message = `Please select an action ${(questionnaires).map(q => `${q.code}: ${q.name}`).join('\n')}`
-    const response = await sender.sendMessage(participant, message);
+    const message = `Please select an action \n${(questionnaires).map(q => `${q.code}: ${q.name.substring(0, 23)}`).join('\n')}`
+    const response = await sender.sendMessage(participant, message, {});
     return response;
   }
 
@@ -110,6 +113,7 @@ export class ConversationService {
       conversationId: conversation.id,
       source: 'conversation_service',
     });
+    if(questionId)
     await this.responseService.saveOutboundResponse(conversation, message, questionId);
   }
 
@@ -125,16 +129,9 @@ export class ConversationService {
     return question;
   }
   async processInboundMessageFromPhoneNumber(channel: ChannelDomain, phone: string, message, questionnaireCode: string, context: MessageContext) {
-    const participant = await this.participantService.findByPhone(phone);
-    if(!participant){
-       return {
-        responded: true,
-        reason: ProcessAnswerStatus.PARTICIPANT_NOT_FOUND,
-        action: "REPLIED_NEW_CONVERSATION",
-        context: { questionnaireCode, channel, participant, message, ...context }
-      };
-    }
-    return this.processInboundMessage(channel, participant, message, questionnaireCode, context);
+    let participant = await this.participantService.findByPhone(phone);
+    if(!participant) participant = await this.participantService.createParticipant({phone} as ParticipantDomain)
+    return this.processInboundMessage(channel, participant!, message, questionnaireCode, context);
   }
 
   async processInboundMessage(
@@ -161,12 +158,13 @@ export class ConversationService {
     //Scenario 2 : Questionnaire Found but no conversation, start new conversation
     if (!conversation && questionnaire) {
       const startQuestion = this.questionnaireService.getStartQuestion(questionnaire);
+
       conversation = await this.create(questionnaire.id, channel.id, participant.id, startQuestion.id!, questionnaire.questions);
       await this.sendQuestion(conversation, startQuestion);
       const progressedConversation = await this.conversationRepository.save(
         conversation.id!,
         {
-          state: ConversationState.PROGRESS,
+          state: ConversationState.WAITING_FOR_USER,
           currentQuestionId: startQuestion.id,
         } as Partial<ConversationDomain>,
       );
@@ -185,6 +183,16 @@ export class ConversationService {
         context: { questionnaireCode, channel, participant, message, ...context }
       };
     }
+    if(message === questionnaire?.endPhrase) {
+     await this.stopConversation(conversation.id!)
+     await this.sendMessage(conversation!, questionnaire.conclusion || 'Thank you.')
+       return {
+        responded: true,
+        reason: ProcessAnswerStatus.COMPLETED,
+        action: "ENDED_CONVERSATION",
+        context: { questionnaireCode, channel, participant, message, ...context }
+      };
+    }
     if (conversation.status === ConversationStatus.COMPLETED) {
       this.sendMessage(conversation!, "Thank you.")
       return {
@@ -196,7 +204,6 @@ export class ConversationService {
     }
 
     const currentQuestion = this.getCurrentQuestion(conversation);
-
     await this.responseService.saveInboundResponse(
       conversation,
       message,
@@ -247,7 +254,7 @@ export class ConversationService {
     const updatedConversation = await this.conversationRepository.save(
       conversation.id!,
       {
-        state: ConversationState.PROGRESS,
+        state: ConversationState.PROCESSING,
         currentQuestionId: processingResult.nextQuestion.id,
       },
     );
@@ -264,6 +271,13 @@ export class ConversationService {
         context: { questionnaireCode, channel, participant, message, ...context }
       };
 
+  }
+
+  async stopConversation(conversationId: string) {
+    return this.conversationRepository.save(conversationId, {
+      status: ConversationStatus.STOPPED,
+      endedAt: new Date(),
+    });
   }
 
   async closeConversation(conversationId: string) {

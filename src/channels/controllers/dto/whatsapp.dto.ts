@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsArray, IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export enum WhatsAppMessageStatus {
   SENT = 'sent',
@@ -6,6 +8,7 @@ export enum WhatsAppMessageStatus {
   READ = 'read',
   FAILED = 'failed',
 }
+
 
 export class MediaDto {
   @ApiProperty({ example: '1234567890' })
@@ -28,6 +31,111 @@ export class MediaDto {
 export class TextDto {
   @ApiProperty({ example: 'Hello from WhatsApp' })
   body: string;
+}
+
+
+export class ButtonReplyDto {
+  @IsString()
+  id: string;
+
+  @IsString()
+  title: string;
+}
+
+export class ButtonDto {
+  @IsString()
+  @IsIn(["reply"])
+  type: "reply";
+
+  @ValidateNested()
+  @Type(() => ButtonReplyDto)
+  reply: ButtonReplyDto;
+}
+
+export class InteractiveButtonActionDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ButtonDto)
+  buttons: ButtonDto[];
+}
+
+export class ListRowDto {
+  @IsString()
+  id: string;
+
+  @IsString()
+  title: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
+export class ListSectionDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ListRowDto)
+  rows: ListRowDto[];
+}
+
+export class InteractiveListActionDto {
+  @IsString()
+  button: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ListSectionDto)
+  sections: ListSectionDto[];
+}
+
+export class BodyDto {
+  @IsString()
+  text: string;
+}
+
+export class InteractiveDto {
+  @IsString()
+  @IsIn(["button", "list"])
+  type: "button" | "list";
+
+  @ValidateNested()
+  @Type(() => BodyDto)
+  body: BodyDto;
+
+  @ValidateNested()
+  action: InteractiveButtonActionDto | InteractiveListActionDto;
+  
+}
+
+export class InteractiveResponse {
+  button_reply: {
+    id: string,
+    title: string
+  }
+  list_reply: {
+    id: string,
+    title: string
+  }
+}
+
+export class InteractiveMessageDto {
+  @IsString()
+  messaging_product: "whatsapp";
+
+  @IsString()
+  to: string;
+
+  @IsString()
+  @IsIn(["interactive"])
+  type: "interactive";
+
+  @ValidateNested()
+  @Type(() => InteractiveDto)
+  interactive: InteractiveDto;
 }
 
 
@@ -64,6 +172,9 @@ export class MessageDto {
   @ApiProperty({ type: TextDto, required: false })
   text?: TextDto;
 
+  @ApiProperty({ type: InteractiveDto, required: false })
+  interactive: InteractiveResponse
+
   @ApiProperty({ type: MediaDto, required: false })
   image?: MediaDto;
 
@@ -78,6 +189,11 @@ export class MessageDto {
 
   @ApiProperty({ type: LocationDto, required: false })
   location?: LocationDto;
+
+  context: {
+    from: string,
+    id: string
+  }
 }
 
 export class ContactDto {
@@ -164,7 +280,6 @@ export class EntryDto {
   @ApiProperty({ type: [ChangeDto] })
   changes: ChangeDto[];
 }
-
 export class WhatsAppWebhookDto {
   @ApiProperty({ example: 'whatsapp_business_account' })
   object: string;

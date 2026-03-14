@@ -39,7 +39,6 @@ export class QuestionProcessorService {
 
   askQuestion(question: QuestionDomain) {
       let message = question.text;
-
       if (question.options?.length) {
         const options = question.options
           .map((option) => `${option.key}: ${option.label}`)
@@ -151,7 +150,7 @@ export class QuestionProcessorService {
       if (!selectedOption) {
         return {
           processedAnswer: message.trim(),
-          validationMessage: 'Please select a valid option.\n' + this.askQuestion(question),
+          validationMessage: 'Please select a valid option: ' + this.askQuestion(question),
         };
       }
 
