@@ -66,11 +66,12 @@ export class ChannelController {
   @Post('send-message')
   async sendMessage(@Body() dto: SendChannelMessageDto) {
     this.logger.log(
-      `[channel:send-message] channel=${dto.channelId} recipient=${dto.recipient}`,
+      `[channel:send-message] channel=${dto.channelId} recipient=${dto.email} {dto.phone}`,
     );
     const sender = await this.senderFactory.getSender(dto.channelId);
     await sender.sendMessage(
-      this.buildDirectParticipant(dto.recipient),
+      this.buildDirectParticipant(dto),
+      dto.title,
       dto.message,
       dto.previewLink,
       { channelId: dto.channelId, source: 'channel_controller' },
@@ -85,11 +86,12 @@ export class ChannelController {
     @Body() dto: SendMessageByChannelPathDto,
   ) {
     this.logger.log(
-      `[channel:send-message:path] channel=${channelId} recipient=${dto.recipient}`,
+      `[channel:send-message:path] channel=${channelId} recipient=${dto.phone} ${dto.email}`,
     );
     const sender = await this.senderFactory.getSender(channelId);
     await sender.sendMessage(
-      this.buildDirectParticipant(dto.recipient),
+      this.buildDirectParticipant(dto),
+      dto.title,
       dto.message,
       dto.previewLink,
       { channelId, source: 'channel_controller' },
@@ -107,7 +109,7 @@ export class ChannelController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     this.logger.log(
-      `[channel:send-media] channel=${dto.channelId} recipient=${dto.recipient} file=${dto.fileName || file?.originalname || dto.fileUrl || 'n/a'}`,
+      `[channel:send-media] channel=${dto.channelId} recipient=${dto.phone} file=${dto.fileName || file?.originalname || dto.fileUrl || 'n/a'}`,
     );
     const sender = await this.senderFactory.getSender(dto.channelId);
     if (!sender.sendMedia) {
@@ -118,10 +120,12 @@ export class ChannelController {
       throw new BadRequestException('Provide file or fileUrl');
     }
 
-    await sender.sendMedia(this.buildDirectParticipant(dto.recipient), {
+    await sender.sendMedia(this.buildDirectParticipant(dto), {
       documentType: dto.documentType,
       file,
       fileUrl: dto.fileUrl,
+      title: dto.title,
+      message: dto.message,
       fileName: dto.fileName || file?.originalname,
       context: { channelId: dto.channelId, source: 'channel_controller' },
     });
@@ -129,13 +133,14 @@ export class ChannelController {
     return { success: true };
   }
 
-  private buildDirectParticipant(recipient: string): ParticipantDomain {
+  private buildDirectParticipant(dto): ParticipantDomain {
+    const {email, phone} = dto;
     return {
       id: 'direct-send',
       firstName: 'Direct',
       lastName: 'Recipient',
-      email: `direct-${recipient}@local.invalid`,
-      phone: recipient,
+      email,
+      phone,
     };
   }
 }

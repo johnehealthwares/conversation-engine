@@ -26,18 +26,19 @@ export class ResponseService {
     attribute: string,
     message: string,
     valid: boolean,
+    processedAnswer?: unknown,
     metadata?: Record<string, any>,
   ) {
     this.logger.debug(
       `[response:inbound] conversation=${conversationId} question=${attribute} valid=${valid}`,
     );
     return this.responseModel.create({
-      conversationId,
+      conversationId: new Types.ObjectId(conversationId),
       participantId,
       questionId,
       direction: ResponseDirection.INBOUND,
       message,
-      textAnswer: message,
+      textAnswer: this.serializeAnswer(processedAnswer, message),
       attribute,
       metadata,
       valid,
@@ -63,7 +64,7 @@ export class ResponseService {
       `[response:outbound] conversation=${conversationId} question=${questionAttribute} valid=${valid}`,
     );
     return this.responseModel.create({
-      conversationId,
+      conversationId: new Types.ObjectId(conversationId),
       participantId,
       questionId,
       direction: ResponseDirection.OUTBOUND,
@@ -76,51 +77,46 @@ export class ResponseService {
     });
   }
 
-  async getValidQuestionnaireResponsesMapByAttribute(questionnaireId: string): Promise<Record<string, any>> {
-    this.logger.verbose?.(
-      `[response:aggregate] Building valid response map for questionnaire=${questionnaireId}`,
-    );
-    const persistedQuestions = await this.questionModel
-      .find({ questionnaireId: new Types.ObjectId(questionnaireId) })
-      .select({ _id: 1 })
-      .lean();
-
-    let questionIds = persistedQuestions.map((question) => question._id);
-
-    if (!questionIds.length) {
-      const questionnaire = await this.questionnaireModel
-        .findById(questionnaireId)
-        .select({ questions: 1 })
-        .lean();
-      questionIds =
-        questionnaire?.questions
-          ?.map((question: { _id: Types.ObjectId }) => question._id)
-          .filter(Boolean) || [];
-    }
-
-    if (!questionIds.length) {
-      return {};
-    }
-
-    const normalizedQuestionIds = questionIds.flatMap((questionId) => [
-      questionId,
-      questionId.toString(),
-    ]);
-
+  async getValidResponsesMapByAttribute(conversationId: string): Promise<Record<string, any>> {
+  
     const responses = await this.responseModel.find({
-      questionId: { $in: normalizedQuestionIds },
+      conversationId: new Types.ObjectId(conversationId),
       direction: ResponseDirection.INBOUND,
       valid: true,
-    });
+    }).lean();
 
     this.logger.debug(
-      `[response:aggregate] Aggregated ${responses.length} valid inbound responses for questionnaire=${questionnaireId}`,
+      `[response:aggregate] Aggregated ${responses.length} valid inbound responses for conversation=${conversationId}`,
     );
-    return responses.reduce((acc, r) => {
+    const result = responses.reduce((acc, r) => {
       if (r.attribute) {
         acc[r.attribute] = r.textAnswer ?? r.message;
       }
       return acc;
     }, {} as Record<string, any>);
+    return result;
+  }
+
+  private serializeAnswer(processedAnswer: unknown, fallback: string): string {
+    if (processedAnswer === undefined || processedAnswer === null) {
+      return fallback;
+    }
+
+    if (
+      typeof processedAnswer === 'object' &&
+      processedAnswer !== null &&
+      'value' in processedAnswer
+    ) {
+      const optionValue = (processedAnswer as Record<string, any>).value;
+      if (optionValue !== undefined && optionValue !== null) {
+        return String(optionValue);
+      }
+    }
+
+    if (typeof processedAnswer === 'object') {
+      return JSON.stringify(processedAnswer);
+    }
+
+    return String(processedAnswer);
   }
 }

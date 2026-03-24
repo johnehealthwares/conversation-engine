@@ -130,6 +130,14 @@ export class CreateQuestionDto {
   @IsOptional()
   aiConfig?: AIQuestionConfig;
 
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  optionSource?: Record<string, any>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  apiNavigation?: Record<string, any>;
+
   @ApiPropertyOptional({ type: [Object] })
   @IsOptional()
   validationRules?: ValidationRule[];

@@ -25,9 +25,6 @@ export class Questionnaire {
   @Prop()
   description?: string;
 
-  @Prop()
-  submissionUrl?: string;
-
   // Behavior
   @Prop({ required: true, default: false })
   isDynamic: boolean;

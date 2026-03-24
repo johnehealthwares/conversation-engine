@@ -32,6 +32,17 @@ export class ExchangeService implements OnModuleInit {
     this.logger.log('[exchange:watch] Starting Mongo change stream for exchanges.');
     const changeStream = this.exchangeModel.watch();
 
+    changeStream.on('error', (error: any) => {
+      if (error?.code === 40573) {
+        this.logger.warn(
+          '[exchange:watch] Change streams are unavailable on this Mongo deployment. Skipping exchange watcher.',
+        );
+        return;
+      }
+
+      this.logger.error('[exchange:watch] Change stream failed', error);
+    });
+
     changeStream.on('change', ({ operationType, fullDocument, updateDescription }) => {
       let direction, id, info, status;
       if (operationType === 'insert') {

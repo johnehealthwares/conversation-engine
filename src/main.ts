@@ -7,6 +7,7 @@ import { AllExceptionsFilter } from './AllExceptionsFilter';
 import { seedQuestionnaires } from './scripts/seed-questionnaires';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { seedWorkflows } from './scripts/seed-workflows';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -33,7 +34,12 @@ async function bootstrap() {
   const shouldSeedOnStartup = configService.get<string>('SEED_ON_STARTUP', 'true') !== 'false';
   if (shouldSeedOnStartup) {
     try {
-      logger.log('[boot:seed] Startup questionnaire sync enabled. Beginning seed run.');
+      logger.log('[boot:seed] Startup workflow sync enabled. Beginning seed run.');
+      const workflowSeedingResult = await seedWorkflows(app);
+      logger.log(
+        `[boot:seed] Workflow sync complete :: created=${workflowSeedingResult.created} updated=${workflowSeedingResult.updated} skipped=${workflowSeedingResult.skipped}`,
+      );
+      logger.log('[boot:seed] Startup workflow sync enabled. Beginning seed run.');
       const seedingResult = await seedQuestionnaires(app);
       logger.log(
         `[boot:seed] Questionnaire sync complete :: created=${seedingResult.created} updated=${seedingResult.updated} skipped=${seedingResult.skipped}`,

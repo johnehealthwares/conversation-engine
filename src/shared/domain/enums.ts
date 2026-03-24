@@ -1,8 +1,8 @@
 export enum QuestionType {
   TEXT = 'text',
-  TEXT_WITH_LINK = 'TEXT_WITH_LINK',
   NUMBER = 'number',
   DATE = 'date',
+  EMAIL = 'email',
   SINGLE_CHOICE = 'single_choice',
   MULTI_CHOICE = 'multi_choice',
   BOOLEAN = 'boolean',
@@ -15,6 +15,8 @@ export enum RenderMode {
   TEXTAREA = 'textarea',
   RADIO = 'radio',
   CHECKBOX = 'checkbox',
+  TEXT_WITH_LINK = 'TEXT_WITH_LINK',
+  LINK = 'LINK',
   DROPDOWN = 'dropdown',
   CHAT = 'chat',
   FILE_UPLOAD = 'file_upload',
@@ -23,6 +25,7 @@ export enum RenderMode {
 export enum ProcessMode {
   NONE = 'none',
   OPTION_PROCESSED = 'option_processed',
+  API_PROCESSED = 'api_processed',
   AI_PROCESSED = 'ai_processed',
   QUESTION_TYPE = 'question_type',
   RULE_ENGINE = 'rule_engine',
@@ -48,6 +51,7 @@ export enum ConversationState {
 }
 
 export enum ChannelType {
+  MOCK = 'MOCK',
   WHATSAPP = 'WHATSAPP',
   SMS = 'SMS',
   EMAIL = 'EMAIL',

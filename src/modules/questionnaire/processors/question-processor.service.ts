@@ -7,65 +7,113 @@ import {
   ValidationRule,
 } from '../../../shared/domain';
 import { AIProcessorService } from './ai-processor.service';
-export type ProcessAnswerResult =
-  | {
-      status: ProcessAnswerStatus.VALIDATION_ERROR;
-      value: string;
-      message: string;
-    }
-  | {
-      status: ProcessAnswerStatus.NEXT_QUESTION;
-      nextQuestion: QuestionDomain;
-      processedAnswer: unknown;
-      aiMetadata?: Record<string, any>;
-    }
-  | {
-      status: ProcessAnswerStatus.COMPLETED;
-      processedAnswer: unknown;
-      aiMetadata?: Record<string, any>;
-    };
+import { ApiProcessorFacade } from './api-processor';
+import { OptionResolver } from './option-resolver';
+
+/* -------------------- TYPES -------------------- */
 
 export enum ProcessAnswerStatus {
   PROCESSING_ERROR = 'PROCESSING_ERROR',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   NEXT_QUESTION = 'NEXT_QUESTION',
   COMPLETED = 'COMPLETED',
-  CONVERSATION_NOT_FOUND = "CONVERSATION_NOT_FOUND",
-  PARTICIPANT_NOT_FOUND='PARTICIPANT_NOT_FOUND',
+  CONVERSATION_NOT_FOUND = 'CONVERSATION_NOT_FOUND',
+  PARTICIPANT_NOT_FOUND = 'PARTICIPANT_NOT_FOUND',
   QUESTIONNAIRE_NOT_FOUND = 'QUESTIONNAIRE_NOT_FOUND',
   QUESTIONNAIRE_CODE_NOT_PROVIDED = 'QUESTIONNAIRE_CODE_NOT_PROVIDED',
   CONVERSATION_NOT_FOUND_FOR_SOME_REASON = 'CONVERSATION_NOT_FOUND_FOR_SOME_REASON',
 }
+
+export type ProcessAnswerResult =
+  | {
+    status: ProcessAnswerStatus.VALIDATION_ERROR;
+    value: string;
+    message: string;
+  }
+  | {
+    status: ProcessAnswerStatus.NEXT_QUESTION;
+    nextQuestion: QuestionDomain;
+    processedAnswer: unknown;
+    aiMetadata?: Record<string, any>;
+  }
+  | {
+    status: ProcessAnswerStatus.COMPLETED;
+    processedAnswer: unknown;
+    aiMetadata?: Record<string, any>;
+  };
+
+/* -------------------- SERVICE -------------------- */
+
 @Injectable()
 export class QuestionProcessorService {
-  constructor(private readonly aiProcessor: AIProcessorService) {}
+  constructor(
+    private readonly aiProcessor: AIProcessorService,
+    private readonly apiProcessor: ApiProcessorFacade, // ✅ injected
+    private readonly optionResolver: OptionResolver,
+  ) { }
 
-  askQuestion(question: QuestionDomain) {
-      let message = question.text;
-      if (question.options?.length) {
-        const options = question.options
-          .map((option) => `${option.key}: ${option.label}`)
-          .join('\n');
+  /* -------------------- ASK -------------------- */
 
-        message = `${message}\n${options}`;
-      }
-      return message;
+  askQuestion(question: QuestionDomain, conversation?: ConversationDomain) {
+    let message = question.text;
+    question.options = this.optionResolver.resolve(
+      question,
+      conversation || ({ context: {} } as ConversationDomain),
+    );
+
+    if (question.options?.length) {
+      const options = question.options
+        .map((option) => `${option.key}: ${option.label}`)
+        .join('\n');
+
+      message = `${message}\n${options}`;
+    }
+
+    return message;
   }
+
+  /* -------------------- MAIN FLOW -------------------- */
+
   async processAnswer(
     conversation: ConversationDomain,
     question: QuestionDomain,
     message: string,
   ): Promise<ProcessAnswerResult> {
+
+    // ✅ 1. VALIDATION
     const validationMessage = await this.validateAnswer(question, message);
     if (validationMessage) {
-      return { value: message.trim(), status: ProcessAnswerStatus.VALIDATION_ERROR, message: validationMessage };
+      return {
+        value: message.trim(),
+        status: ProcessAnswerStatus.VALIDATION_ERROR,
+        message: validationMessage,
+      };
     }
 
-    const modeResult = await this.processByMode(question, message);
+    // ✅ 2. PROCESSING
+    const modeResult = await this.processByMode(
+      conversation,
+      question,
+      message,
+    );
+
     if (modeResult.validationMessage) {
-      return { value: message.trim(), status: ProcessAnswerStatus.VALIDATION_ERROR, message: modeResult.validationMessage };
+      return {
+        value: message.trim(),
+        status: ProcessAnswerStatus.VALIDATION_ERROR,
+        message: modeResult.validationMessage,
+      };
     }
 
+    // ✅ 3. STORE METADATA (important for API flows)
+    if (modeResult.metadata) {
+      conversation.context = {
+        ...conversation.context,
+        ...modeResult.metadata,
+      };
+    }
+
+    // ✅ 4. RESOLVE NEXT QUESTION
     const nextQuestion = this.resolveNextQuestion(
       conversation,
       question,
@@ -88,200 +136,192 @@ export class QuestionProcessorService {
     };
   }
 
-  private async validateAnswer(question: QuestionDomain, message: string): Promise<string | null> {
+  /* -------------------- VALIDATION -------------------- */
+
+  private async validateAnswer(
+    question: QuestionDomain,
+    message: string,
+  ): Promise<string | null> {
     const answer = message?.trim() ?? '';
+    let error = '';
 
     if (question.isRequired && !answer) {
-      return 'This question requires an answer.';
+      error = 'This question requires an answer.';
     }
 
     for (const rule of question.validationRules ?? []) {
+      if (rule.type === 'question-type') {
+        error = this.validateAnswerByType(
+          question.questionType,
+          answer,
+          question.options?.map((opt) => opt.key),
+        );
+      }
+
       const ruleError = await this.applyRule(answer, rule);
-      if (ruleError) return ruleError;
+      if (ruleError) error = ruleError;
     }
 
-    return null;
+    return error ? error + ' ' + this.askQuestion(question) : null;
   }
 
-  private async applyRule(value: string, rule: ValidationRule): Promise<string | null> {
+  private async applyRule(
+    value: string,
+    rule: ValidationRule,
+  ): Promise<string | null> {
     switch (rule.type) {
       case 'required':
-        if (!value) return rule.message || 'This field is required.';
-        return null;
-      case 'min': {
-        if (value.length < Number(rule.value ?? 0)) {
-          return rule.message || `Minimum length is ${rule.value}.`;
-        }
-        return null;
-      }
-      case 'max': {
-        if (value.length > Number(rule.value ?? Number.MAX_SAFE_INTEGER)) {
-          return rule.message || `Maximum length is ${rule.value}.`;
-        }
-        return null;
-      }
-      case 'regex': {
+        return !value ? rule.message || 'This field is required.' : null;
+
+      case 'min':
+        return value.length < Number(rule.value ?? 0)
+          ? rule.message || `Minimum length is ${rule.value}.`
+          : null;
+
+      case 'max':
+        return value.length > Number(rule.value ?? Number.MAX_SAFE_INTEGER)
+          ? rule.message || `Maximum length is ${rule.value}.`
+          : null;
+
+      case 'regex':
         if (!rule.value) return null;
-        const pattern = new RegExp(String(rule.value));
-        if (!pattern.test(value)) {
-          return rule.message || 'Input does not match the expected format.';
-        }
-        return null;
-      }
+        return new RegExp(String(rule.value)).test(value)
+          ? null
+          : rule.message || 'Invalid format';
+
       case 'api':
-        const message = await this.validateByAPI(rule.value, value);
-        return message;
+        return this.validateByAPI(rule.value, value);
+
       default:
         return null;
     }
   }
 
   private validateAnswerByType(
-  type: QuestionType,
-  value: any,
-  options?: string[] // used for choice questions
-): boolean {
-  const normalizedString = typeof value === 'string' ? value.trim() : value;
-  const normalizedOptions = options?.map((option) => option.toLowerCase()) || [];
+    type: QuestionType,
+    value: any,
+    options?: string[],
+  ): string {
+    const v = typeof value === 'string' ? value.trim() : value;
+    const opts = options?.map((o) => o.toLowerCase()) || [];
 
-  switch (type) {
-    case QuestionType.TEXT:
-    case QuestionType.AI_OPEN:
-      return typeof normalizedString === 'string' && normalizedString.length > 0;
+    switch (type) {
+      case QuestionType.TEXT:
+      case QuestionType.AI_OPEN:
+        return v ? '' : 'Provide a valid answer';
 
-    case QuestionType.NUMBER:
-      return normalizedString !== '' && !Number.isNaN(Number(normalizedString));
+      case QuestionType.NUMBER:
+        return !isNaN(Number(v)) ? '' : 'Provide a valid number';
 
-    case QuestionType.DATE:
-      return typeof normalizedString === 'string' && !Number.isNaN(Date.parse(normalizedString));
+      case QuestionType.EMAIL:
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+          ? ''
+          : 'Provide a valid email';
 
-    case QuestionType.BOOLEAN:
-      if (typeof value === 'boolean') return true;
-      if (typeof normalizedString !== 'string') return false;
-      return ['true', 'false', 'yes', 'no', '1', '0'].includes(
-        normalizedString.toLowerCase(),
-      );
+      case QuestionType.SINGLE_CHOICE:
+        return opts.includes(v?.toLowerCase())
+          ? ''
+          : 'Select a valid option';
 
-    case QuestionType.SINGLE_CHOICE:
-      if (!options || !Array.isArray(options)) return false;
-      return (
-        typeof normalizedString === 'string' &&
-        normalizedOptions.includes(normalizedString.toLowerCase())
-      );
-
-    case QuestionType.MULTI_CHOICE:
-      if (!options || !Array.isArray(options)) return false;
-      if (typeof normalizedString === 'string') {
-        return normalizedString
-          .split(',')
-          .map((item) => item.trim().toLowerCase())
-          .every((item) => normalizedOptions.includes(item));
-      }
-      return (
-        Array.isArray(value) &&
-        value.every(
-          (v) =>
-            typeof v === 'string' &&
-            normalizedOptions.includes(v.trim().toLowerCase()),
-        )
-      );
-
-    case QuestionType.FILE:
-      return (
-        value &&
-        typeof value === 'object' &&
-        typeof value.url === 'string'
-      );
-
-    default:
-      return false;
+      default:
+        return '';
+    }
   }
-}
 
-private async validateByAPI(api: string, value: string): Promise<string | null> {
-    const result = null;
-      return result
-}
+  private async validateByAPI(api: string, value: string): Promise<string | null> { const result = null; return result }
+
+  /* -------------------- PROCESSING -------------------- */
 
   private async processByMode(
+    conversation: ConversationDomain,
     question: QuestionDomain,
     message: string,
   ): Promise<{
     processedAnswer: unknown;
     nextQuestionId?: string;
+    metadata?: Record<string, any>;
     aiMetadata?: Record<string, any>;
     validationMessage?: string;
   }> {
-    if(question.processMode === ProcessMode.QUESTION_TYPE) {
-     const isValid =  this.validateAnswerByType(question.questionType, message, question.options?.map((opt) => opt.key))
-     if(!isValid) {
-      return {
-          processedAnswer: message.trim(),
-          validationMessage: 'Please enter a valid answer: ' + this.askQuestion(question),
-        };
-     }
-    }
+
+    // ✅ OPTION MODE
     if (question.processMode === ProcessMode.OPTION_PROCESSED) {
-      const selectedOption = question.options?.find(
-        (option) =>
-          option.key.toLowerCase() === message.trim().toLowerCase() ||
-          option.label.toLowerCase() === message.trim().toLowerCase(),
+      const selected = question.options?.find(
+        (o) =>
+          o.key.toLowerCase() === message.toLowerCase() ||
+          o.label.toLowerCase() === message.toLowerCase(),
       );
 
-      if (!selectedOption) {
+      if (!selected) {
         return {
-          processedAnswer: message.trim(),
-          validationMessage: 'Please select a valid option: ' + this.askQuestion(question),
+          processedAnswer: message,
+          validationMessage: 'Invalid option. ' + this.askQuestion(question),
         };
       }
 
       return {
-        processedAnswer: {
-          key: selectedOption.key,
-          label: selectedOption.label,
-          value: selectedOption.value,
-        },
-        nextQuestionId: selectedOption.jumpToQuestionId,
+        processedAnswer: selected,
+        nextQuestionId: selected.jumpToQuestionId,
       };
     }
 
+    // ✅ AI MODE
     if (question.processMode === ProcessMode.AI_PROCESSED) {
-      const aiResult = await this.aiProcessor.analyze(message, question.aiConfig);
+      const ai = await this.aiProcessor.analyze(
+        message,
+        question.aiConfig as any,
+      );
       return {
-        processedAnswer: aiResult.structuredResult,
-        aiMetadata: {
-          confidence: aiResult.confidence,
-        },
+        processedAnswer: ai.structuredResult,
+        aiMetadata: { confidence: ai.confidence },
       };
     }
 
-    return {
-      processedAnswer: message.trim(),
-    };
+    // ✅ DEFAULT PROCESSING
+    const processedAnswer = message.trim();
+
+    // 🚀 API NAVIGATION (delegated)
+    if (
+      question.processMode === ProcessMode.API_PROCESSED ||
+      question.apiNavigation
+    ) {
+      const apiResult = await this.apiProcessor.execute(
+        question.apiNavigation!,
+        message,
+        conversation,
+      );
+
+      return {
+        processedAnswer,
+        nextQuestionId: apiResult.nextQuestionId,
+        metadata: apiResult.metadata,
+      };
+    }
+
+    return { processedAnswer };
   }
+
+  /* -------------------- NAVIGATION -------------------- */
 
   private resolveNextQuestion(
     conversation: ConversationDomain,
-    currentQuestion: QuestionDomain,
-    overriddenNextQuestionId?: string,
+    current: QuestionDomain,
+    overrideId?: string,
   ): QuestionDomain | null {
+
     const questions = conversation.questions ?? [];
-    if (!questions.length) return null;
 
-    const candidateId = overriddenNextQuestionId ?? currentQuestion.nextQuestionId;
-    if (candidateId) {
-      const nextById = questions.find((question) => question.id === candidateId);
-      if (nextById) return nextById;
+    // 🔹 explicit jump
+    if (overrideId) {
+      return questions.find((q) => q.id === overrideId) || null;
     }
 
+    // 🔹 fallback sequential
     const ordered = [...questions].sort((a, b) => a.index - b.index);
-    const currentIndex = ordered.findIndex(
-      (question) => question.id === currentQuestion.id,
-    );
-    if (currentIndex < 0 || currentIndex === ordered.length - 1) {
-      return null;
-    }
+    const i = ordered.findIndex((q) => q.id === current.id);
 
-    return ordered[currentIndex + 1];
+    return i >= 0 && i < ordered.length - 1
+      ? ordered[i + 1]
+      : null;
   }
 }

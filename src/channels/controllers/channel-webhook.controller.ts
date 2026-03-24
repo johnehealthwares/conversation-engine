@@ -11,10 +11,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChannelProcessorFactory } from '../processors/channel-processor-factory';
-import { ChannelType } from '../../shared/domain';
-import { WhatsAppWebhookDto } from './dto/whatsapp.dto';
 import { ApiBody } from '@nestjs/swagger';
+import { MockInboundDto } from './dto/mock.dto';
+import { WhatsAppWebhookDto } from './dto/whatsapp.dto';
+import { MockProcessor } from '../processors/mock-processor';
 import { WhatsappProcessor } from '../processors/whatsapp-processor';
 
 @Controller('webhooks')
@@ -22,6 +22,7 @@ export class ChannelWebhookController {
   private readonly logger = new Logger(ChannelWebhookController.name);
 
   constructor(
+    private readonly mockProcessor: MockProcessor,
     private readonly whatsappProcessor: WhatsappProcessor,
     private readonly configService: ConfigService,
   ) {}
@@ -55,6 +56,16 @@ export class ChannelWebhookController {
       `[webhook:ingest] WhatsApp payload received :: entries=${payload.entry?.length || 0}`,
     );
     return this.whatsappProcessor.processInbound(payload);
+  }
+
+  @Post('mock')
+  @HttpCode(HttpStatus.OK)
+  @ApiBody({ type: MockInboundDto })
+  async mock(@Body() payload: MockInboundDto) {
+    this.logger.log(
+      `[webhook:ingest] Mock payload received :: channel=${payload.channelId} from=${payload.from}`,
+    );
+    return this.mockProcessor.processInbound(payload);
   }
 
 

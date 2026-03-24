@@ -166,3 +166,15 @@ curl -v -X POST https://conversation-engine-5epg.onrender.com/api/channels/send-
   -F "documentType=image" \
   -F "fileName=Passport" \
   -F "file=@/Users/john/Desktop/face.png"
+
+###Mock
+
+  curl -X 'POST' \
+  'http://localhost:8080/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "23412345434",
+  "text": "2010-12-12"
+}'

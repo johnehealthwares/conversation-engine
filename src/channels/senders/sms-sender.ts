@@ -18,6 +18,7 @@ export class NigeriaBulkSmsSender implements ChannelSender {
 
   async sendMessage(
     participant: ParticipantDomain,
+    title: string,
     message: string,
     containsLink: boolean,
     context: Record<string, any> = {},

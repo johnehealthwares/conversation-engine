@@ -12,8 +12,6 @@ export type Questionnaire = {
   introduction?: string;
   conclusion?: string;
 
-  submissionUrl?: string;
-
   // Behavior
   isDynamic: boolean; // true = AI driven, false = static flow
   version: number;
@@ -42,3 +40,5 @@ export type Questionnaire = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type QuestionRef = Question;

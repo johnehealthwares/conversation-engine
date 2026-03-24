@@ -15,4 +15,5 @@ export type Conversation = {
      endedAt?: Date;
      pendingMessages?: string[];
      awaitingUserReply?: boolean;
+     context: Record<string, any>;
 }

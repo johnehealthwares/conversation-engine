@@ -3,6 +3,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 export type ChannelDocument = Channel;
 
 export enum ChannelType {
+  MOCK = 'MOCK',
   WHATSAPP = 'WHATSAPP',
   SMS = 'SMS',
   EMAIL = 'EMAIL',

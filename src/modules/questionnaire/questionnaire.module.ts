@@ -22,6 +22,8 @@ import { QuestionnaireService } from './services/questionnaire.service';
 import { TagService } from './services/tag.service';
 import { QuestionProcessorService } from './processors/question-processor.service';
 import { AIProcessorService } from './processors/ai-processor.service';
+import { ApiProcessorFacade } from './processors/api-processor';
+import { OptionResolver } from './processors/option-resolver';
 import { CreateQuestionUseCase } from './services/use-cases/create-question.use-case';
 import { UpdateQuestionUseCase } from './services/use-cases/update-question.use-case';
 import { QuestionMongoRepository } from './repositories/mongo/question.mongorepo';
@@ -50,6 +52,8 @@ import { QuestionRepository } from './repositories/question.repository';
     TagService,
     QuestionProcessorService,
     AIProcessorService,
+    ApiProcessorFacade,
+    OptionResolver,
     CreateQuestionUseCase,
     UpdateQuestionUseCase,
     QuestionMongoRepository,
@@ -66,6 +70,8 @@ import { QuestionRepository } from './repositories/question.repository';
     TagService,
     QuestionProcessorService,
     AIProcessorService,
+    ApiProcessorFacade,
+    OptionResolver,
     CreateQuestionUseCase,
     UpdateQuestionUseCase,
     QuestionMongoRepository,
