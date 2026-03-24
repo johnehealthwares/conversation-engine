@@ -15,7 +15,27 @@ export class NigeriaBulkSmsSender implements ChannelSender {
   constructor(
     private readonly configService: ConfigService,
     private readonly exchangeService: ExchangeService,
-  ) {}
+  ) { }
+
+
+  formatNigerianNumber(phone): string {
+    // Remove all non-numeric characters
+    let cleaned = ('' + phone).replace(/\D/g, '');
+
+    // If it starts with 0, replace it with 234
+    if (cleaned.startsWith('0') && cleaned.length === 11) {
+      cleaned = '234' + cleaned.substring(1);
+    }
+    // If it starts with 803 (10 digits), add 234
+    else if (cleaned.length === 10) {
+      cleaned = '234' + cleaned;
+    }
+
+    // Final check: ensures it's 13 digits total starting with 234
+    return cleaned.startsWith('234') ? `+${cleaned}` : phone;
+  }
+
+
 
   async sendMessage(
     participant: ParticipantDomain,
@@ -37,14 +57,13 @@ export class NigeriaBulkSmsSender implements ChannelSender {
         username,
         password,
         sender,
-        message,
-        mobiles: participant.phone!,
+        message: message.substring(0, 470),
+        mobiles: this.formatNigerianNumber(participant.phone!),
       });
 
       const url = `${this.baseUrl}?${params.toString()}`;
 
       const res = await axios.get(url);
-      console.log({res})
       if (!res.data || res.data.status !== 'OK') {
         throw new Error('SMS sending failed');
       }
@@ -86,4 +105,6 @@ export class NigeriaBulkSmsSender implements ChannelSender {
       );
     }
   }
+
+
 }
