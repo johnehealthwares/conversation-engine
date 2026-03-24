@@ -56,15 +56,15 @@ export class NigeriaBulkSmsSender implements ChannelSender {
         username,
         password,
         sender,
-        message: message.substring(0, 470),
+        message: (`*${title || ''}*: ${message}`).substring(0, 470),
         mobiles: this.formatNigerianNumber(participant.phone!),
       });
 
       const url = `${this.baseUrl}?${params.toString()}`;
 
       const res = await axios.get(url);
-      if (!res.data || res.data.status !== 'OK') {
-        throw new Error('SMS sending failed');
+      if (res.data && res.data.status !== 200) {
+        throw new Error(JSON.stringify(res.data));
       }
 
       await this.exchangeService.logOutbound({
@@ -97,9 +97,8 @@ export class NigeriaBulkSmsSender implements ChannelSender {
         },
         status: ExchangeStatus.FAILED,
       });
-      console.log(err)
       throw new HttpException(
-        `BulkSMS error: ${err.message}`,
+        `BulkSMS error: ${err}`,
         HttpStatus.BAD_GATEWAY,
       );
     }
