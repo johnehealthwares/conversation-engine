@@ -7,22 +7,25 @@ import { ChannelSender, SendMediaPayload } from './channel-sender';
 export class EmailChannelSender implements ChannelSender {
   constructor(private readonly mailerService: MailerService) {}
 
+  isHtmlString(str: string): boolean {
+  const htmlRegex = /<\/?[a-z][\s\S]*>/i;
+  return htmlRegex.test(str);
+}
   async sendMessage(
     participant: ParticipantDomain,
     title: string,
     message: string,
-    containsLink: boolean,
     context: Record<string, any>
   ): Promise<void> {
     if (!participant.email) {
       throw new Error('Participant does not have an email');
     }
-
+    const isHtml = this.isHtmlString(message);
     await this.mailerService.sendMail({
       to: participant.email,
       subject: title,
-      text: message,
-      html: `<p>${message}</p>`,
+      text: !isHtml ? message : '',
+      html:  isHtml ? message : '',
     });
   }
 

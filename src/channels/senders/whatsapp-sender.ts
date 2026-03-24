@@ -46,14 +46,13 @@ export class WhatsappSender implements ChannelSender {
     destination: ParticipantDomain,
     title: string,
     message: string,
-    containsLink: boolean,
     context: Record<string, any>,
   ): Promise<void> {
     const config = this.getConfig();
     const request = {
           messaging_product: 'whatsapp',
           to: destination.phone,
-          ...this.buildWhatsAppControl(message, containsLink, +context.page)
+          ...this.buildWhatsAppControl(message, context?.containsLink, +context.page)
         };
     try {
       const axiosResponse = await axios.post<WhatsAppSendMessageResponse>(

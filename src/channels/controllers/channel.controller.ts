@@ -73,8 +73,7 @@ export class ChannelController {
       this.buildDirectParticipant(dto),
       dto.title,
       dto.message,
-      dto.previewLink,
-      { channelId: dto.channelId, source: 'channel_controller' },
+      { channelId: dto.channelId, source: 'channel_controller', containsLink: dto.previewLink },
     );
 
     return { success: true };
@@ -93,8 +92,7 @@ export class ChannelController {
       this.buildDirectParticipant(dto),
       dto.title,
       dto.message,
-      dto.previewLink,
-      { channelId, source: 'channel_controller' },
+      { channelId, source: 'channel_controller', containsLink: dto.previewLink },
     );
 
     return { success: true };

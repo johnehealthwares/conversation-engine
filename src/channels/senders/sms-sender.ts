@@ -1,7 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { ChannelSender } from './channel-sender';
+import { ChannelSender, SendMediaPayload } from './channel-sender';
 import { ParticipantDomain } from '../../shared/domain';
 import { ExchangeService } from '../services/exchange.service';
 import { ExchangeStatus } from '../schemas/exchange.schema';
@@ -41,7 +41,6 @@ export class NigeriaBulkSmsSender implements ChannelSender {
     participant: ParticipantDomain,
     title: string,
     message: string,
-    containsLink: boolean,
     context: Record<string, any> = {},
   ): Promise<void> {
     try {
@@ -105,6 +104,12 @@ export class NigeriaBulkSmsSender implements ChannelSender {
       );
     }
   }
+
+  async   sendMedia(participant: ParticipantDomain, payload: SendMediaPayload): Promise<void> {
+    //TODO: If file, upload to cloudinary
+     return this.sendMessage(participant, payload.title, `${payload.message}  Download File @ ${payload.fileUrl || payload.fileName || payload.file?.filename}`, payload.context)
+  }
+
 
 
 }

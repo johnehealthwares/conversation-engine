@@ -59,7 +59,6 @@ export class WhatsappProcessor implements ChannelProcessor {
           { phone: contextExchange?.recipient } as any,
           'proceeedwithrecent',
           contextExchange!.message,
-          false,
           { page, contextId: message.context.id },
         )
         return { message: 'returned new page' }
@@ -68,7 +67,6 @@ export class WhatsappProcessor implements ChannelProcessor {
           { phone: contextExchange?.recipient } as any,
           'proceeedwithrecent',
           "Please proceed with recent...",
-          false,
           {contextId:message.context.id  },
         )
         return { message: 'returned proceed with most recent' }

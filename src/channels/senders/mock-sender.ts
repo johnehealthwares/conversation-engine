@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ChannelSender } from './channel-sender';
+import { ChannelSender, SendMediaPayload } from './channel-sender';
 import { ChannelType, ParticipantDomain } from '../../shared/domain';
 import { ExchangeService } from '../services/exchange.service';
 
@@ -8,23 +8,24 @@ export class MockSender implements ChannelSender {
   private readonly logger = new Logger(MockSender.name);
 
   constructor(private readonly exchangeService: ExchangeService) {}
+  sendMedia(participant: ParticipantDomain, payload: SendMediaPayload): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
 
   async sendMessage(
     destination: ParticipantDomain,
     title: string,
     message: string,
-    containsLink: boolean,
     context: Record<string, any>,
   ): Promise<void> {
     const messageId = `mock-out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     this.logger.log(
-      `[mock:send] to=${destination.phone || destination.id} containsLink=${containsLink}`,
+      `[mock:send] to=${destination.phone || destination.id}`,
     );
     console.log('[MOCK CHANNEL OUTBOUND]', {
       to: destination.phone || destination.id,
       message,
-      containsLink,
       context,
     });
 
@@ -40,7 +41,6 @@ export class MockSender implements ChannelSender {
       rawPayload: {
         provider: 'console',
         message,
-        containsLink,
         destination,
         context,
       },

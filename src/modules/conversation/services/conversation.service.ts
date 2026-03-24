@@ -29,6 +29,7 @@ import { ChannelSender } from '../../../channels/senders/channel-sender';
 import { ConversationResponse } from '../../../shared/domain/conversation-response';
 import { MessageContext } from '../../../shared/domain/message-context.domain';
 import { WorkflowProcessorService } from '../processors/workflow-processor.service';
+import { contains } from 'class-validator';
 
 
 @Injectable()
@@ -90,11 +91,12 @@ export class ConversationService {
 
     let message = this.questionProcessor.askQuestion(question, conversation);
 
-    await sender.sendMessage(participant, question.attribute, message, question.renderMode == RenderMode.TEXT_WITH_LINK || question.renderMode === RenderMode.LINK,{ 
+    await sender.sendMessage(participant, question.attribute, message,{ 
       channelId: conversation.channelId,
       conversationId: conversation.id,
       questionnaireCode: conversation.questionnaireId,
       source: 'conversation_service',
+      containsLink:  question.renderMode == RenderMode.TEXT_WITH_LINK || question.renderMode === RenderMode.LINK
     });
     await this.conversationRepository.save(conversation.id!, {
       state: ConversationState.WAITING_FOR_USER,
@@ -114,7 +116,7 @@ export class ConversationService {
     const sender = await this.senderFactory.getSender(channelId);
     const questionnaires = await this.questionnaireService.getInitQuestionnaires();
     const message = `Please select an action \n${(questionnaires).map(q => `${q.code}: ${q.name.substring(0, 23)}`).join('\n')}`
-    const response = await sender.sendMessage(participant, 'Start', message, resentMessage, {});
+    const response = await sender.sendMessage(participant, 'Start', message, {resentMessage });
     return response;
   }
 
@@ -130,7 +132,7 @@ export class ConversationService {
     const participant = await this.participantService.findOne(
       conversation.participantId,
     );
-    await sender.sendMessage(participant, questionAttribute || questionId || 'continue', message, containsLink, {
+    await sender.sendMessage(participant, questionAttribute || questionId || 'continue', message, {
       channelId: conversation.channelId,
       conversationId: conversation.id,
       source: 'conversation_service',
