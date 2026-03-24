@@ -27,7 +27,7 @@ async function run(): Promise<void> {
         throw closeError;
       }
     }
-  }
+  } 
 }
 
 run()

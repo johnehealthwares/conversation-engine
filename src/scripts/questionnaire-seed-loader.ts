@@ -31,6 +31,8 @@ type SeedQuestion = {
   nextQuestionReferenceCode?: string;
   childQuestionnaireReferenceCode?: string;
   aiConfig?: Record<string, any>;
+  optionSource?: Record<string, any>;
+  apiNavigation?: Record<string, any>;
   validationRules?: Record<string, any>[];
   metadata?: Record<string, any>;
   options?: SeedOption[];
@@ -53,7 +55,7 @@ type SeedQuestionnaire = {
   tags?: string[];
   metadata?: Record<string, any>;
   workflowId?: string;
-  submissionUrl?: string;
+  workflowCode?: string;
   startQuestionReferenceCode?: string;
   questions?: SeedQuestion[];
 };
@@ -74,7 +76,7 @@ type FlatQuestionnaireRow = {
   isActive?: string;
   tags?: string;
   workflowId?: string;
-  submissionUrl?: string;
+  workflowCode?: string;
   startQuestionReferenceCode?: string;
   metadata?: string;
 };
@@ -97,6 +99,8 @@ type FlatQuestionRow = {
   nextQuestionReferenceCode?: string;
   childQuestionnaireReferenceCode?: string;
   aiConfig?: string;
+  optionSource?: string;
+  apiNavigation?: string;
   validationRules?: string;
   metadata?: string;
 };
@@ -145,6 +149,8 @@ type LegacySeedQuestion = {
   tags?: string[];
   childQuestionnaireId?: string;
   aiConfig?: Record<string, any>;
+  optionSource?: Record<string, any>;
+  apiNavigation?: Record<string, any>;
   validationRules?: Record<string, any>[];
   metadata?: Record<string, any>;
   options?: LegacySeedOption[];
@@ -166,7 +172,7 @@ type LegacySeedQuestionnaire = {
   tags?: string[];
   metadata?: Record<string, any>;
   workflowId?: string;
-  submissionUrl?: string;
+  workflowCode?: string;
   questions?: LegacySeedQuestion[];
 };
 
@@ -477,7 +483,9 @@ function normalizeWorkbookRows(rows: WorkbookRows): SeedQuestionnaire[] {
         row.childQuestionnaireReferenceCode,
       ),
       aiConfig: parseJsonObject(row.aiConfig),
-      validationRules: parseJsonArray(row.validationRules),
+      optionSource: parseJsonObject(row.optionSource),
+      apiNavigation: parseJsonObject(row.apiNavigation),
+      validationRules: parseValidationArray(row.validationRules),
       metadata: parseJsonObject(row.metadata),
       options: (optionsByQuestionReference.get(referenceCode) || []).sort(
         (left, right) => left.index - right.index,
@@ -518,7 +526,7 @@ function normalizeWorkbookRows(rows: WorkbookRows): SeedQuestionnaire[] {
         isActive: parseBoolean(row.isActive, true),
         tags: parseStringArray(row.tags),
         workflowId: normalizeOptionalString(row.workflowId),
-        submissionUrl: normalizeOptionalString(row.submissionUrl),
+        workflowCode: normalizeOptionalString(row.workflowCode),
         startQuestionReferenceCode:
           normalizeOptionalString(row.startQuestionReferenceCode) ||
           questions[0]?.referenceCode,
@@ -568,6 +576,8 @@ function normalizeLegacySeed(
             : undefined,
           childQuestionnaireReferenceCode: question.childQuestionnaireId,
           aiConfig: question.aiConfig,
+          optionSource: question.optionSource,
+          apiNavigation: question.apiNavigation,
           validationRules: question.validationRules || [],
           metadata: question.metadata,
           options: (question.options || [])
@@ -604,7 +614,7 @@ function normalizeLegacySeed(
       tags: item.tags || [],
       metadata: item.metadata,
       workflowId: item.workflowId,
-      submissionUrl: item.submissionUrl,
+      workflowCode: item.workflowCode,
       startQuestionReferenceCode: questions[0]?.referenceCode,
       questions,
     };
@@ -966,17 +976,30 @@ function parseJsonObject(value: string | undefined): Record<string, any> | undef
   return undefined;
 }
 
-function parseJsonArray(value: string | undefined): Record<string, any>[] {
+function parseValidationArray(value: string | undefined): Record<string, any>[] {
   if (!value || value.trim() === '') {
     return [];
   }
 
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  // // Try JSON first
+  // try {
+  //   const parsed = JSON.parse(value);
+  //   if (Array.isArray(parsed)) return parsed;
+  // } catch (e) {
+  //   // fallback to custom parsing
+  // }
+
+  // Support comma-separated rules: "type:value:message,type2:value2:message2"
+  const validations = value.split(',').map((rule) => {
+    const [type, val, message] = rule.split(':');
+ 
+    return {
+      type: type?.trim(),
+      value: val !== undefined ? val.trim() : null,
+      message: message !== undefined ? message.trim() : null,
+    };
+  });  
+  return validations;
 }
 
 function normalizeOptionalString(value?: string): string | undefined {

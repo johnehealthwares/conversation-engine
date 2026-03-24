@@ -14,6 +14,7 @@ import {
   QuestionDomain,
   QuestionnaireDomain,
   QuestionType,
+  RenderMode,
 } from '../../../shared/domain';
 import { QuestionnaireService } from '../../questionnaire/services/questionnaire.service';
 import { ChannelSenderFactory } from '../../../channels/senders/channel-sender-factory';
@@ -63,6 +64,7 @@ export class ConversationService {
       status: ConversationStatus.ACTIVE,
       startedAt: new Date(),
       questions,
+      context: {},
     };
     // ✅ EVENT
     const domain = await this.conversationRepository.create({
@@ -86,9 +88,9 @@ export class ConversationService {
       conversation.participantId,
     );
 
-    let message = this.questionProcessor.askQuestion(question);
+    let message = this.questionProcessor.askQuestion(question, conversation);
 
-    await sender.sendMessage(participant, message, question.questionType == QuestionType.TEXT_WITH_LINK, {
+    await sender.sendMessage(participant, question.attribute, message, question.renderMode == RenderMode.TEXT_WITH_LINK || question.renderMode === RenderMode.LINK,{ 
       channelId: conversation.channelId,
       conversationId: conversation.id,
       questionnaireCode: conversation.questionnaireId,
@@ -112,7 +114,7 @@ export class ConversationService {
     const sender = await this.senderFactory.getSender(channelId);
     const questionnaires = await this.questionnaireService.getInitQuestionnaires();
     const message = `Please select an action \n${(questionnaires).map(q => `${q.code}: ${q.name.substring(0, 23)}`).join('\n')}`
-    const response = await sender.sendMessage(participant, message, resentMessage, {});
+    const response = await sender.sendMessage(participant, 'Start', message, resentMessage, {});
     return response;
   }
 
@@ -128,7 +130,7 @@ export class ConversationService {
     const participant = await this.participantService.findOne(
       conversation.participantId,
     );
-    await sender.sendMessage(participant, message, containsLink, {
+    await sender.sendMessage(participant, questionAttribute || questionId || 'continue', message, containsLink, {
       channelId: conversation.channelId,
       conversationId: conversation.id,
       source: 'conversation_service',
@@ -193,14 +195,15 @@ export class ConversationService {
 
       conversation = await this.create(questionnaire.id, channel.id, participant.id, startQuestion.id!, questionnaire.questions);
       if (questionnaire.workflowId) {
-        const workflowInstanceId = await this.workflowProcessor.createWorkFlow(
+       const workflowInstance = await this.workflowProcessor.createWorkFlow(
           questionnaire.workflowId,
           conversation.id!,
           'conversation_started',
           startQuestion.attribute,
         );
+        if(workflowInstance)
         conversation = await this.conversationRepository.save(conversation.id!, {
-          workflowInstanceId,
+          workflowInstanceId: workflowInstance.id
         });
       }
       const resent = false;
@@ -213,12 +216,18 @@ export class ConversationService {
         } as Partial<ConversationDomain>,
       );
 
-      // ✅ EVENT 1 -Conversation Started
-      if(conversation.workflowInstanceId) this.workflowProcessor.conversationStarted(conversation.workflowInstanceId, participant.phone!, message );
+      // ✅ EVENT 1️⃣  -Conversation Started
+      if (conversation.workflowInstanceId) {
+        await this.workflowProcessor.conversationStarted(
+          conversation.workflowInstanceId,
+          participant.phone!,
+          message,
+        );
+      }
       return {
         responded: true,
         reason: ProcessAnswerStatus.CONVERSATION_NOT_FOUND,
-        action: "REPLIED_NEW_CONVERSATION",
+        action: "CREATED_NEW_CONVERSATION",
         context: { questionnaireCode, channel, participant, message, ...context, conversationId: conversation.id }
       };
     }
@@ -227,7 +236,7 @@ export class ConversationService {
       return {
         responded: true,
         reason: ProcessAnswerStatus.CONVERSATION_NOT_FOUND_FOR_SOME_REASON,
-        action: "REPLIED_NEW_CONVERSATION",
+        action: "BAD_REQUEST_ERROR",
         context: { questionnaireCode, channel, participant, message, ...context }
       };
     }
@@ -243,13 +252,26 @@ export class ConversationService {
       const resent = false;
       const hasLink = false;
       await this.sendMessage(conversation!, 'You have stopped this conversation, Thank you.', hasLink, resent);
-      // ✅ EVENT 2 -Conversation Stopped
-      const payload = await this.responseService.getValidQuestionnaireResponsesMapByAttribute(questionnaire.id)
-      if(conversation.workflowInstanceId) this.workflowProcessor.conversationStopped(conversation.workflowInstanceId, participant.phone!, currentQuestion.attribute,message, payload);
-      return {
+      // ✅ EVENT 2️⃣ -Conversation Stopped
+     
+      if (conversation.workflowInstanceId) {
+        const payload = {
+          ...(await this.responseService.getValidResponsesMapByAttribute(
+            conversation.id!,
+          )),
+          ...(conversation.context || {}),
+        };
+        await this.workflowProcessor.conversationStopped(
+          conversation.workflowInstanceId,
+          participant.phone!,
+          currentQuestion.attribute,
+          message,
+          payload,
+        );
+      } return {
         responded: true,
         reason: ProcessAnswerStatus.COMPLETED,
-        action: "ENDED_CONVERSATION",
+        action: "STOPPED_CONVERSATION",
         context: { questionnaireCode, channel, participant, message, ...context }
       };
     }
@@ -263,7 +285,7 @@ export class ConversationService {
       return {
         responded: true,
         reason: ProcessAnswerStatus.COMPLETED,
-        action: "REPLIED_NEW_CONVERSATION",
+        action: "COMPLETED_CONVERSATION",
         context: { questionnaireCode, channel, participant, message, ...context }
       };
     }
@@ -281,6 +303,9 @@ export class ConversationService {
       currentQuestion.attribute,
       message,
       processingResult.status !== ProcessAnswerStatus.VALIDATION_ERROR,
+      processingResult.status !== ProcessAnswerStatus.VALIDATION_ERROR
+        ? processingResult.processedAnswer
+        : undefined,
     );
 
     if (processingResult.status === ProcessAnswerStatus.VALIDATION_ERROR) {
@@ -291,14 +316,28 @@ export class ConversationService {
       await this.sendMessage(
         conversation,
         processingResult.message,
-        currentQuestion.hasLink,
+        Boolean(currentQuestion.hasLink),
         resent,
         currentQuestion.id,
         currentQuestion.attribute,
       );
-      // ✅ EVENT 3 -Answer Invalid 
-      const payload = await this.responseService.getValidQuestionnaireResponsesMapByAttribute(questionnaire!.id) 
-      if(conversation.workflowInstanceId) this.workflowProcessor.answerInValid(conversation.workflowInstanceId, participant.phone!, currentQuestion.attribute, processingResult.value, payload);
+      // ✅ EVENT 3️⃣ -Answer Invalid 
+    
+      if (conversation.workflowInstanceId) {
+        const payload = {
+          ...(await this.responseService.getValidResponsesMapByAttribute(
+            conversation.id!,
+          )),
+          ...(conversation.context || {}),
+        };
+        await this.workflowProcessor.answerInValid(
+          conversation.workflowInstanceId,
+          participant.phone!,
+          currentQuestion.attribute,
+          processingResult.value,
+          payload,
+        );
+      }
       return {
         responded: true,
         reason: processingResult.status,
@@ -326,10 +365,22 @@ export class ConversationService {
         currentQuestion.id,
         currentQuestion.attribute,
       );
-      // ✅ EVENT 4 -Conversation Completed
-      const payload = await this.responseService.getValidQuestionnaireResponsesMapByAttribute(questionnaire!.id) 
-      payload.submissionUrl = questionnaire.submissionUrl;
-      if(conversation.workflowInstanceId) this.workflowProcessor.conversationCompleted(conversation.workflowInstanceId, participant.phone!, currentQuestion.attribute, processingResult.processedAnswer as string, payload);
+      // ✅ EVENT 4️⃣ -Conversation Completed
+      if (conversation.workflowInstanceId) {
+        const payload = {
+          ...(await this.responseService.getValidResponsesMapByAttribute(
+            conversation.id!,
+          )),
+          ...(conversation.context || {}),
+        };
+        await this.workflowProcessor.conversationCompleted(
+          conversation.workflowInstanceId,
+          participant.phone!,
+          currentQuestion.attribute,
+          processingResult.processedAnswer as string,
+          payload,
+        );
+      }
       return {
         responded: true,
         reason: processingResult.status,
@@ -341,6 +392,7 @@ export class ConversationService {
     const updatedConversation = await this.conversationRepository.save(
       conversation.id!,
       {
+        context: conversation.context,
         state: ConversationState.PROCESSING,
         currentQuestionId: processingResult.nextQuestion.id,
       },
@@ -354,10 +406,22 @@ export class ConversationService {
     this.logger.debug(
       `[flow:advance] conversation=${conversation.id} next=${processingResult.nextQuestion.attribute}`,
     );
-    // ✅ EVENT 5 -Answer Valid
-    const payload = await this.responseService.getValidQuestionnaireResponsesMapByAttribute(questionnaire!.id) 
-    if(conversation.workflowInstanceId) this.workflowProcessor.answerValid(conversation.workflowInstanceId, participant.phone!, currentQuestion.attribute, processingResult.processedAnswer as string, payload);
-    
+    // ✅ EVENT 5️⃣ -Answer Valid
+    if (conversation.workflowInstanceId) {
+      const payload = {
+        ...(await this.responseService.getValidResponsesMapByAttribute(
+          conversation.id!,
+        )),
+        ...(conversation.context || {}),
+      };
+      await this.workflowProcessor.answerValid(
+        conversation.workflowInstanceId,
+        participant.phone!,
+        currentQuestion.attribute,
+        processingResult.processedAnswer as string,
+        payload,
+      );
+    }
     return {
       responded: true,
       reason: processingResult.status,

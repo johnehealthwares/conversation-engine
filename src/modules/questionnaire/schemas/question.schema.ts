@@ -2,7 +2,7 @@
 
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema, Types } from 'mongoose';
-import { QuestionType, RenderMode, ProcessMode } from '../../../shared/domain';
+import { QuestionType, RenderMode, ProcessMode, ValidationRule } from '../../../shared/domain';
 import { Option, OptionSchema } from './option.schema';
 
 @Schema({ timestamps: true })
@@ -71,14 +71,30 @@ export class Question {
   @Prop({ default: true })
   isActive: boolean;
 
-  @Prop()
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Question',
+    required: false,
+    index: true,
+  })
   previousQuestionId?: string;
 
-  @Prop()
-  nextQuestionId?: string;
 
-  @Prop()
-  childQuestionnaireId?: string;
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Question',
+    required: false,
+    index: true,
+  })
+  nextQuestionId?: Types.ObjectId;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Questionnaire',
+    required: false,
+    index: true,
+  })
+  childQuestionnaireId?: Types.ObjectId;
 
   @Prop({ type: [OptionSchema], default: [] })
   options?: Option[];
@@ -86,8 +102,14 @@ export class Question {
   @Prop({ type: MongooseSchema.Types.Mixed })
   aiConfig?: Record<string, any>;
 
+  @Prop({ type: MongooseSchema.Types.Mixed })
+  optionSource?: Record<string, any>;
+
+  @Prop({ type: MongooseSchema.Types.Mixed })
+  apiNavigation?: Record<string, any>;
+
   @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
-  validationRules?: Record<string, any>[];
+  validationRules?: ValidationRule[];
 
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
   metadata?: Record<string, any>;

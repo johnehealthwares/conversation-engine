@@ -3,6 +3,8 @@ import type { Express } from 'express';
 
 export type SendMediaPayload = {
   documentType: string;
+  title: string;
+  message: string;
   file?: Express.Multer.File;
   fileUrl?: string;
   fileName?: string;
@@ -10,6 +12,6 @@ export type SendMediaPayload = {
 };
 
 export interface ChannelSender {
-  sendMessage(participant: ParticipantDomain, message: string, containsLink: boolean, context: Record<string, any>): Promise<void>;
+  sendMessage(participant: ParticipantDomain, title: string, message: string, containsLink: boolean, context: Record<string, any>): Promise<void>;
   sendMedia?(participant: ParticipantDomain, payload: SendMediaPayload): Promise<void>;
 }

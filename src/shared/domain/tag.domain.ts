@@ -1,1 +1,6 @@
-export type { TagDomain } from '../../modules/questionnaire/domain/tag.domain';
+export type TagDomain = {
+  id?: string;
+  name: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+};

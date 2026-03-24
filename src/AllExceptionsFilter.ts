@@ -33,6 +33,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       `[http:error] ${request.method} ${request.url} -> ${status} :: ${message}`,
       exception instanceof Error ? exception.stack : undefined,
     );
+    console.log(exception)
 
     response.status(status).json({
       statusCode: status,

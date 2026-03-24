@@ -97,6 +97,16 @@ export class UpdateQuestionDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsObject()
+  optionSource?: Record<string, any>;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  apiNavigation?: Record<string, any>;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 

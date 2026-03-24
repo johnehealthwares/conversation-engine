@@ -42,7 +42,7 @@ export class Conversation {
   questions?: Question[]; // optional snapshot of questionnaire at start
 
   @Prop({ type: Object, default: {} })
-  metadata?: Record<string, any>; // e.g., session info, AI state
+  context: Record<string, any>; // e.g., session info, AI state
 
   @Prop({ type: Date })
   startedAt?: Date;

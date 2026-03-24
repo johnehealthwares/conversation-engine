@@ -20,8 +20,13 @@ export function mapQuestionEntityToDomain(schema: Question): QuestionDomain {
       ? optionListOptions || []
       : schema.options?.map(mapOptionEntityToDomain) || [],
     aiConfig: schema.aiConfig as AIQuestionConfig | undefined,
+    optionSource: schema.optionSource as QuestionDomain['optionSource'],
+    apiNavigation: schema.apiNavigation as QuestionDomain['apiNavigation'],
     validationRules: schema.validationRules as ValidationRule[] | undefined,
     questionnaireId: schema.questionnaireId.toString(),
+    childQuestionnaireId: schema.childQuestionnaireId?.toString(),
+    previousQuestionId: schema.previousQuestionId?.toString(),
+    nextQuestionId: schema.nextQuestionId?.toString(),
     optionListId:
       schema.optionListId instanceof Types.ObjectId
         ? schema.optionListId.toString()
@@ -50,7 +55,12 @@ export function mapQuestionDomainToShcema({id, ...question}: QuestionDomain): Qu
       _id: option.id ? new Types.ObjectId(option.id) : new Types.ObjectId(),
       ...option,
     })),
+    optionSource: question.optionSource,
+    apiNavigation: question.apiNavigation,
     questionnaireId: new Types.ObjectId(question.questionnaireId),
+    childQuestionnaireId: new Types.ObjectId(question.childQuestionnaireId),
+    previousQuestionId: new Types.ObjectId(question.previousQuestionId),
+    nextQuestionId: new Types.ObjectId(question.nextQuestionId),
   };
   if (question.optionListId) {
     schema.optionListId = new Types.ObjectId(question.optionListId);

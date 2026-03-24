@@ -9,8 +9,14 @@ import { StepRunnerService } from './services/step-runner.service';
 import { WorkflowSubscriber } from './subscribers/subscriber';
 import { WorkflowInstance, WorkflowInstanceSchema } from './entities/instance';
 import { Workflow, WorkflowSchema } from './entities/workflow';
+import { WorkflowEvent, WorkflowEventSchema } from './entities/event';
 import { WorkflowInstanceService } from './services/workflow-instance';
 import { WorkflowService } from './services/workflow-service';
+import { WorkflowProcessorService } from './processors/workflow-processor';
+import { WorkflowEventService } from './services/workflow-event-service';
+import { WorkflowController } from './controllers/workflow.controller';
+import { WorkflowInstanceController } from './controllers/workflow-instance.controller';
+import { WorkflowEventController } from './controllers/workflow-event.controller';
 
 @Module({
   imports: [
@@ -18,7 +24,13 @@ import { WorkflowService } from './services/workflow-service';
     MongooseModule.forFeature([
       { name: Workflow.name, schema: WorkflowSchema },
       { name: WorkflowInstance.name, schema: WorkflowInstanceSchema },
+      { name: WorkflowEvent.name, schema: WorkflowEventSchema },
     ]),
+  ],
+  controllers: [
+    WorkflowController,
+    WorkflowInstanceController,
+    WorkflowEventController,
   ],
   providers: [
     EventBusService,
@@ -27,6 +39,8 @@ import { WorkflowService } from './services/workflow-service';
     StepRunnerService,
     WorkflowInstanceService,
     WorkflowService,
+    WorkflowEventService,
+    WorkflowProcessorService,
     WorkflowSubscriber,
   ],
   exports: [
@@ -34,6 +48,8 @@ import { WorkflowService } from './services/workflow-service';
     WorkflowEngineService,
     WorkflowInstanceService,
     WorkflowService,
+    WorkflowEventService,
+    WorkflowProcessorService,
   ],
 })
 export class WorkflowEngineModule {}

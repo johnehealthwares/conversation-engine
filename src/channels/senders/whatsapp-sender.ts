@@ -44,6 +44,7 @@ export class WhatsappSender implements ChannelSender {
 
   async sendMessage(
     destination: ParticipantDomain,
+    title: string,
     message: string,
     containsLink: boolean,
     context: Record<string, any>,
@@ -66,7 +67,7 @@ export class WhatsappSender implements ChannelSender {
       );
       const response = axiosResponse?.data;
       const messageId = response?.messages?.[0]?.id;
-
+      
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: ChannelType.WHATSAPP,

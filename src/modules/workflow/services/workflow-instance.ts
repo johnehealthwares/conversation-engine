@@ -20,23 +20,46 @@ export class WorkflowInstanceService {
     return toDomain(await instance.save());
   }
 
-  async findById(id: string): Promise<WorkflowInstance> {
-    const instance = await this.instanceModel.findById(id).exec();
-    if (!instance) throw new NotFoundException('Workflow instance not found');
-    return instance;
+  async findAll(flowId?: string): Promise<WorkflowInstanceDomain[]> {
+    const filter = flowId ? { flowId } : {};
+    const instances = await this.instanceModel.find(filter).lean();
+    return toDomain(instances);
   }
 
-  async getActiveByConversationId(conversationId: string): Promise<WorkflowInstance> {
+  async findById(id: string): Promise<WorkflowInstanceDomain> {
+    const instance = await this.instanceModel
+      .findOne({ _id: new Types.ObjectId(id) })
+      .lean();
+    if (!instance) throw new NotFoundException('Workflow instance not found');
+    return toDomain(instance);
+  }
+
+  async getActiveByConversationId(conversationId: string): Promise<WorkflowInstanceDomain> {
     const instance = await this.instanceModel
       .findOne({ flowId: conversationId, status: 'ACTIVE' })
-      .exec();
+      .lean();
     if (!instance) throw new NotFoundException('Workflow instance not found for conversation');
-    return instance;
+    return toDomain(instance);
   }
 
-  async update(id: string, data: Partial<WorkflowInstance>): Promise<WorkflowInstance> {
-    const instance = await this.instanceModel.findByIdAndUpdate(id, data, { new: true });
+  async update(id: string, data: Partial<WorkflowInstance>): Promise<WorkflowInstanceDomain> {
+    const instance = await this.instanceModel.findOneAndUpdate(
+      { _id: new Types.ObjectId(id) },
+      data,
+      { returnDocument: 'after' },
+    );
     if (!instance) throw new NotFoundException('Workflow instance not found');
-    return instance;
+    return toDomain(instance);
+  }
+
+  async remove(id: string): Promise<{ deleted: boolean }> {
+    const result = await this.instanceModel.deleteOne({
+      _id: new Types.ObjectId(id),
+    });
+    if (!result.deletedCount) {
+      throw new NotFoundException('Workflow instance not found');
+    }
+
+    return { deleted: true };
   }
 }

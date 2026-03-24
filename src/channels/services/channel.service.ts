@@ -98,6 +98,9 @@ export class ChannelService {
     this.logger.log(`[channel:dispatch] channel=${channelId} type=${channel.type}`);
 
     switch (channel.type) {
+      case ChannelType.MOCK:
+        return this.sendMock(payload);
+
       case ChannelType.WHATSAPP:
         return this.sendWhatsApp(payload);
 
@@ -114,6 +117,11 @@ export class ChannelService {
 
   private async sendWhatsApp(payload: any) {
     // call whatsapp provider
+    return { status: 'sent' };
+  }
+
+  private async sendMock(payload: any) {
+    this.logger.log(`[channel:mock] ${JSON.stringify(payload)}`);
     return { status: 'sent' };
   }
 
