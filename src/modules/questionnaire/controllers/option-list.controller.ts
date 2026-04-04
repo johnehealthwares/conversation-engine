@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { OptionListService } from '../services/option-list.service';
@@ -13,6 +14,7 @@ import {
   CreateOptionListDto,
   UpdateOptionListDto,
 } from './dto/option-list.dto';
+import { FilterOptionListDto } from './dto/filter-option-list.dto';
 
 @ApiTags('OptionLists')
 @Controller('option-lists')
@@ -25,8 +27,8 @@ export class OptionListController {
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query() filter: FilterOptionListDto) {
+    return this.service.findAll(filter);
   }
 
   @Get(':id')

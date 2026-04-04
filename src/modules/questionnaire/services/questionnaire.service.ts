@@ -12,6 +12,7 @@ import {
 import { QuestionDomain, QuestionnaireDomain } from '../../../shared/domain';
 import { mapQuestionEntityToDomain } from '../../../shared/converters/question-converter';
 import { toDomain } from '../../../shared/converters';
+import { FilterQuestionnaireDto } from '../controllers/dto/filter-questionnaire.dto';
 
 @Injectable()
 export class QuestionnaireService {
@@ -25,8 +26,9 @@ export class QuestionnaireService {
     return this.mapToDomain(response.toObject() as any);
   }
 
-  async findAll(): Promise<QuestionnaireDomain[]> {
-    const results = await this.model.find().lean();
+  async findAll(filter: FilterQuestionnaireDto = {}): Promise<QuestionnaireDomain[]> {
+    const query = this.buildFilter(filter);
+    const results = await this.model.find(query).lean();
     return results.map((item) => this.mapToDomain(item as any));
   }
 
@@ -107,5 +109,25 @@ export class QuestionnaireService {
       id: _id.toString(),
       questions: questions?.map(mapQuestionEntityToDomain),
     };
+  }
+
+  private buildFilter(filter: FilterQuestionnaireDto) {
+    const query: Record<string, any> = {};
+
+    if (filter.code) query.code = filter.code;
+    if (filter.name) query.name = new RegExp(filter.name, 'i');
+    if (typeof filter.isActive === 'boolean') query.isActive = filter.isActive;
+
+    if (filter.search?.trim()) {
+      const regex = new RegExp(filter.search.trim(), 'i');
+      query.$or = [
+        { name: regex },
+        { code: regex },
+        { description: regex },
+        { tags: regex },
+      ];
+    }
+
+    return query;
   }
 }

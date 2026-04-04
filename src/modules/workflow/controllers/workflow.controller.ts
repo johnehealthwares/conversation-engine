@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WorkflowService } from '../services/workflow-service';
 import { CreateWorkflowDto, UpdateWorkflowDto } from './dto/workflow.dto';
+import { FilterWorkflowDto } from './dto/filter-workflow.dto';
 
 @ApiTags('Workflows')
 @Controller('workflows')
@@ -16,8 +17,8 @@ export class WorkflowController {
 
   @Get()
   @ApiOperation({ summary: 'List workflow definitions' })
-  findAll() {
-    return this.workflowService.findAll();
+  findAll(@Query() filter: FilterWorkflowDto) {
+    return this.workflowService.findAll(filter);
   }
 
   @Get(':id')
@@ -38,4 +39,3 @@ export class WorkflowController {
     return this.workflowService.remove(id);
   }
 }
-

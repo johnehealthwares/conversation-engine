@@ -11,6 +11,7 @@ import { NigeriaBulkSmsSender } from './senders/sms-sender';
 import { WhatsappSender } from './senders/whatsapp-sender';
 import { ChannelController } from './controllers/channel.controller';
 import { ChannelWebhookController } from './controllers/channel-webhook.controller';
+import { ExchangeController } from './controllers/exchange.controller';
 import { ChannelProcessorFactory } from './processors/channel-processor-factory';
 import { MockProcessor } from './processors/mock-processor';
 import { WhatsappProcessor } from './processors/whatsapp-processor';
@@ -46,7 +47,7 @@ import { EmailChannelSender } from './senders/email-channel-sender';
       })
     }),
   ],
-  controllers: [ChannelController, ChannelWebhookController],
+  controllers: [ChannelController, ChannelWebhookController, ExchangeController],
   providers: [
     ExchangeService,
     ChannelService,

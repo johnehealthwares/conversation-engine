@@ -10,6 +10,7 @@ import { Question } from '../schemas/question.schema';
 import { CreateOptionListDto, UpdateOptionListDto } from '../controllers/dto/option-list.dto';
 import { OptionListDomain } from '../../../shared/domain/option-list.domain';
 import { toDomain } from '../../../shared/converters';
+import { FilterOptionListDto } from '../controllers/dto/filter-option-list.dto';
 
 @Injectable()
 export class OptionListService {
@@ -41,8 +42,25 @@ export class OptionListService {
     return {id: id.toString(), ...others};
   }
 
-  async findAll() : Promise<OptionListDomain[]>{
-    const schemas: OptionList[]  = await this.optionListModel.find().lean();
+  async findAll(filter: FilterOptionListDto = {}) : Promise<OptionListDomain[]>{
+    const query: Record<string, any> = {};
+
+    if (filter.name) {
+      query.name = new RegExp(filter.name, 'i');
+    }
+
+    if (filter.search?.trim()) {
+      const regex = new RegExp(filter.search.trim(), 'i');
+      query.$or = [
+        { name: regex },
+        { tags: regex },
+        { 'options.key': regex },
+        { 'options.label': regex },
+        { 'options.value': regex },
+      ];
+    }
+
+    const schemas: OptionList[]  = await this.optionListModel.find(query).lean();
 
     return schemas.map(toDomain) as OptionListDomain[]
   }

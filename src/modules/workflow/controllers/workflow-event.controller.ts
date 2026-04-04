@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WorkflowEventService } from '../services/workflow-event-service';
 import {
   EmitWorkflowEventDto,
   MarkWorkflowEventProcessedDto,
 } from './dto/workflow-event.dto';
+import { FilterWorkflowEventDto } from './dto/filter-workflow-event.dto';
 
 @ApiTags('Workflow Events')
 @Controller('workflow-events')
@@ -23,8 +24,8 @@ export class WorkflowEventController {
 
   @Get()
   @ApiOperation({ summary: 'List workflow events' })
-  findAll() {
-    return this.workflowEventService.findAll();
+  findAll(@Query() filter: FilterWorkflowEventDto) {
+    return this.workflowEventService.findAll(filter);
   }
 
   @Get('unprocessed')

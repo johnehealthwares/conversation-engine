@@ -12,6 +12,9 @@ import { ChannelsModule } from '../../channels/channels.module';
 import { QuestionnaireModule } from '../questionnaire/questionnaire.module';
 import { WorkflowEngineModule } from '../workflow/workflow-engine.module';
 import { WorkflowProcessorService } from './processors/workflow-processor.service';
+import { ConversationController } from './controllers/conversation.controller';
+import { Question, QuestionSchema } from '../questionnaire/schemas/question.schema';
+import { Questionnaire, QuestionnaireSchema } from '../questionnaire/schemas/questionnaire.schema';
 
 @Module({
   imports: [
@@ -22,9 +25,11 @@ import { WorkflowProcessorService } from './processors/workflow-processor.servic
       { name: Conversation.name, schema: ConversationSchema },
       { name: Response.name, schema: ResponseSchema },
       { name: Participant.name, schema: ParticipantSchema },
+      { name: Question.name, schema: QuestionSchema },
+      { name: Questionnaire.name, schema: QuestionnaireSchema },
     ]),
   ],
-  controllers: [],
+  controllers: [ConversationController],
   providers: [
     ConversationService,
     ConversationRepository,

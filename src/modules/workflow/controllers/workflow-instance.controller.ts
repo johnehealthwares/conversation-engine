@@ -1,10 +1,11 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WorkflowInstanceService } from '../services/workflow-instance';
 import {
   CreateWorkflowInstanceDto,
   UpdateWorkflowInstanceDto,
 } from './dto/workflow-instance.dto';
+import { FilterWorkflowInstanceDto } from './dto/filter-workflow-instance.dto';
 
 @ApiTags('Workflow Instances')
 @Controller('workflow-instances')
@@ -21,9 +22,8 @@ export class WorkflowInstanceController {
 
   @Get()
   @ApiOperation({ summary: 'List workflow instances' })
-  @ApiQuery({ name: 'flowId', required: false })
-  findAll(@Query('flowId') flowId?: string) {
-    return this.workflowInstanceService.findAll(flowId);
+  findAll(@Query() filter: FilterWorkflowInstanceDto) {
+    return this.workflowInstanceService.findAll(filter);
   }
 
   @Get('by-flow/:flowId/active')

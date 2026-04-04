@@ -17,6 +17,7 @@ import {
   RenderMode,
 } from '../../../shared/domain';
 import { QuestionnaireService } from '../../questionnaire/services/questionnaire.service';
+import { QuestionService } from '../../questionnaire/services/question.service';
 import { ChannelSenderFactory } from '../../../channels/senders/channel-sender-factory';
 import { ConversationRepository } from '../repositories/mongo/conversation.repository';
 import { ResponseService } from './ResponseService';
@@ -29,7 +30,11 @@ import { ChannelSender } from '../../../channels/senders/channel-sender';
 import { ConversationResponse } from '../../../shared/domain/conversation-response';
 import { MessageContext } from '../../../shared/domain/message-context.domain';
 import { WorkflowProcessorService } from '../processors/workflow-processor.service';
-import { contains } from 'class-validator';
+import {
+  CreateConversationDto,
+  UpdateConversationDto,
+} from '../controllers/dto/create-conversation.dto';
+import { FilterConversationDto } from '../controllers/dto/filter-conversation.dto';
 
 
 @Injectable()
@@ -39,6 +44,7 @@ export class ConversationService {
   constructor(
     private readonly conversationRepository: ConversationRepository,
     private readonly questionnaireService: QuestionnaireService,
+    private readonly questionService: QuestionService,
     private readonly responseService: ResponseService,
     private readonly participantService: ParticipantService,
     private readonly senderFactory: ChannelSenderFactory,
@@ -73,6 +79,96 @@ export class ConversationService {
       currentQuestionId,
     });
     return domain;
+  }
+
+  async createConversationRecord(dto: CreateConversationDto): Promise<ConversationDomain> {
+    const questionnaire = dto.questionnaireId
+      ? await this.questionnaireService.findOne(dto.questionnaireId)
+      : dto.questionnaireCode
+        ? await this.questionnaireService.findByCode(dto.questionnaireCode)
+        : null;
+
+    if (!questionnaire) {
+      throw new BadRequestException('Provide a valid questionnaireId or questionnaireCode');
+    }
+
+    const participant =
+      dto.participantId
+        ? await this.participantService.findOne(dto.participantId)
+        : await this.participantService.createParticipant({
+            id: new Types.ObjectId().toString(),
+            phone: dto.phone,
+            email: dto.email,
+          } as ParticipantDomain);
+
+    if (!dto.channelId) {
+      throw new BadRequestException('channelId is required');
+    }
+
+    const questions =
+      questionnaire.questions && questionnaire.questions.length > 0
+        ? questionnaire.questions
+        : await this.questionService.findAll({ questionnaireId: questionnaire.id })
+
+    if (!questions.length) {
+      throw new BadRequestException('The selected questionnaire has no questions')
+    }
+
+    const currentQuestion =
+      (dto.currentQuestionId
+        ? questions.find((question) => question.id === dto.currentQuestionId)
+        : null) ?? [...questions].sort((left, right) => left.index - right.index)[0];
+
+    const created = await this.create(
+      questionnaire.id,
+      dto.channelId,
+      participant.id,
+      currentQuestion.id!,
+      questions,
+    );
+
+    if (dto.context && Object.keys(dto.context).length > 0) {
+      return this.conversationRepository.save(created.id!, {
+        context: dto.context,
+      });
+    }
+
+    return created;
+  }
+
+  async findAll(filter: FilterConversationDto = {}) {
+    return this.conversationRepository.findAll(filter);
+  }
+
+  async findOne(id: string) {
+    const conversation = await this.conversationRepository.findById(id);
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    return conversation;
+  }
+
+  async updateConversationRecord(id: string, dto: UpdateConversationDto) {
+    const existing = await this.findOne(id);
+
+    return this.conversationRepository.save(id, {
+      questionnaireId: dto.questionnaireId ?? existing.questionnaireId,
+      channelId: dto.channelId ?? existing.channelId,
+      participantId: dto.participantId ?? existing.participantId,
+      currentQuestionId: dto.currentQuestionId ?? existing.currentQuestionId,
+      workflowInstanceId: dto.workflowInstanceId ?? existing.workflowInstanceId,
+      status: dto.status ?? existing.status,
+      state: dto.state ?? existing.state,
+      context: dto.context ?? existing.context,
+      endedAt: dto.endedAt ? new Date(dto.endedAt) : existing.endedAt,
+    });
+  }
+
+  async removeConversationRecord(id: string) {
+    await this.findOne(id);
+    await this.conversationRepository.delete(id);
+    return { success: true };
   }
 
   async findActiveConversationOfParticipant(participanctId: string): Promise<ConversationDomain | null> {

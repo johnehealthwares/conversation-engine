@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ import {
 } from './dto/send-channel-media.dto';
 import { ChannelSenderFactory } from '../senders/channel-sender-factory';
 import { ParticipantDomain } from '../../shared/domain';
+import { FilterChannelDto } from './dto/filter-channel.dto';
 
 @ApiTags('Channels')
 @Controller('channels')
@@ -44,8 +46,8 @@ export class ChannelController {
   }
 
   @Get()
-  findAll() {
-    return this.channelService.findAll();
+  findAll(@Query() filter: FilterChannelDto) {
+    return this.channelService.findAll(filter);
   }
 
   @Get(':id')

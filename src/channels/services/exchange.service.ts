@@ -10,6 +10,7 @@ import {
 import { WhatsAppWebhookDto } from '../controllers/dto/whatsapp.dto';
 import { ConversationService } from '../../modules/conversation/services/conversation.service';
 import { ChannelDomain } from '../../shared/domain';
+import { FilterExchangeDto } from '../controllers/dto/filter-exchange.dto';
 type CreateExchangePayload = Partial<Exchange> & {
   channelType: string;
   direction: ExchangeDirection;
@@ -74,6 +75,30 @@ export class ExchangeService implements OnModuleInit {
 
   async create(payload: CreateExchangePayload): Promise<Exchange> {
     return this.exchangeModel.create(payload);
+  }
+
+  async findAll(filter: FilterExchangeDto = {}): Promise<Exchange[]> {
+    const query: Record<string, any> = {};
+
+    if (filter.channelId) query.channelId = filter.channelId;
+    if (filter.channelType) query.channelType = filter.channelType;
+    if (filter.direction) query.direction = filter.direction;
+    if (filter.status) query.status = filter.status;
+    if (filter.conversationId) query.conversationId = filter.conversationId;
+    if (filter.questionnaireCode) query.questionnaireCode = filter.questionnaireCode;
+    if (filter.search?.trim()) {
+      const regex = new RegExp(filter.search.trim(), 'i');
+      query.$or = [
+        { messageId: regex },
+        { sender: regex },
+        { recipient: regex },
+        { message: regex },
+        { conversationId: regex },
+        { questionnaireCode: regex },
+      ];
+    }
+
+    return this.exchangeModel.find(query).sort({ createdAt: -1 }).lean();
   }
 
   async logOutbound(payload: {

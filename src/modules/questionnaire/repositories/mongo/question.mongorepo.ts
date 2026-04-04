@@ -42,6 +42,16 @@ export class QuestionMongoRepository implements QuestionRepository {
     if (filter.processMode)
       query.processMode = filter.processMode;
 
+    if (filter.search?.trim()) {
+      const regex = new RegExp(filter.search.trim(), 'i');
+      query.$or = [
+        { text: regex },
+        { attribute: regex },
+        { description: regex },
+        { questionnaireId: regex },
+      ];
+    }
+
     const result = await this.model.find(query).populate('options').lean();
     const all = await this.model.find();
     return result;

@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { QuestionnaireService } from '../services/questionnaire.service';
@@ -13,6 +14,7 @@ import {
   CreateQuestionnaireDto,
   UpdateQuestionnaireDto,
 } from '../controllers/dto/questionnaire.dto';
+import { FilterQuestionnaireDto } from './dto/filter-questionnaire.dto';
 
 @ApiTags('Questionnaires')
 @Controller('questionnaires')
@@ -25,8 +27,8 @@ export class QuestionnaireController {
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@Query() filter: FilterQuestionnaireDto) {
+    return this.service.findAll(filter);
   }
 
   @Get(':id')

@@ -5,6 +5,7 @@ import { Channel, ChannelDocument } from "../schemas/channel.schema";
 import { ChannelDomain, ChannelType } from "../../shared/domain";
 import { toDomain } from "../../shared/converters";
 import { CreateChannelDto, UpdateChannelDto } from "../controllers/dto/channel.dto";
+import { FilterChannelDto } from "../controllers/dto/filter-channel.dto";
 
 @Injectable()
 export class ChannelService {
@@ -48,8 +49,23 @@ export class ChannelService {
     return toDomain(created);
   }
 
-  async findAll(): Promise<ChannelDomain[]> {
-    const channels = await this.channelModel.find().lean();
+  async findAll(filter: FilterChannelDto = {}): Promise<ChannelDomain[]> {
+    const query: Record<string, any> = {};
+
+    if (filter.type) query.type = filter.type;
+    if (filter.provider) query.provider = new RegExp(filter.provider, 'i');
+    if (typeof filter.isActive === 'boolean') query.isActive = filter.isActive;
+    if (filter.search?.trim()) {
+      const regex = new RegExp(filter.search.trim(), 'i');
+      query.$or = [
+        { name: regex },
+        { provider: regex },
+        { externalId: regex },
+        { type: regex },
+      ];
+    }
+
+    const channels = await this.channelModel.find(query).lean();
     return toDomain(channels);
   }
 

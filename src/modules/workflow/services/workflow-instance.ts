@@ -5,6 +5,7 @@ import { Model, Types } from 'mongoose';
 import { WorkflowInstance, WorkflowInstanceDocument } from '../entities/instance';
 import { toDomain } from 'src/shared/converters';
 import { WorkflowInstanceDomain } from 'src/shared/domain';
+import { FilterWorkflowInstanceDto } from '../controllers/dto/filter-workflow-instance.dto';
 
 @Injectable()
 export class WorkflowInstanceService {
@@ -20,9 +21,22 @@ export class WorkflowInstanceService {
     return toDomain(await instance.save());
   }
 
-  async findAll(flowId?: string): Promise<WorkflowInstanceDomain[]> {
-    const filter = flowId ? { flowId } : {};
-    const instances = await this.instanceModel.find(filter).lean();
+  async findAll(filter: FilterWorkflowInstanceDto = {}): Promise<WorkflowInstanceDomain[]> {
+    const query: Record<string, any> = {};
+    if (filter.flowId) query.flowId = filter.flowId;
+    if (filter.workflowId) query.workflowId = filter.workflowId;
+    if (filter.status) query.status = filter.status;
+    if (filter.search?.trim()) {
+      const regex = new RegExp(filter.search.trim(), 'i');
+      query.$or = [
+        { workflowId: regex },
+        { flowId: regex },
+        { currentStepId: regex },
+        { status: regex },
+      ];
+    }
+
+    const instances = await this.instanceModel.find(query).lean();
     return toDomain(instances);
   }
 

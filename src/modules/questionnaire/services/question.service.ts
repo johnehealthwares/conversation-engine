@@ -38,7 +38,9 @@ export class QuestionService {
   }
 
   findAll(filter: FilterQuestionDto) {
-    return this.repo.findAll(filter);
+    return this.repo.findAll(filter).then((questions) =>
+      questions.map((question) => mapQuestionEntityToDomain(question))
+    );
   }
 
   async findOne(id: string): Promise<QuestionDomain> {

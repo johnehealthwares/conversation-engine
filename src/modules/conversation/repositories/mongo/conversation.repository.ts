@@ -4,6 +4,7 @@ import { Conversation } from "../../schemas/conversation.schema";
 import { isValidObjectId, Model, Types } from "mongoose";
 import { toDomain } from "../../../../shared/converters";
 import { NotFoundException } from "@nestjs/common";
+import { FilterConversationDto } from "../../controllers/dto/filter-conversation.dto";
 
 export class ConversationRepository {
   constructor(
@@ -37,8 +38,38 @@ export class ConversationRepository {
     return toDomain(conversation);
   }
 
-  async findAll(filter) {
-    return this.model.find();
+  async findAll(filter: FilterConversationDto = {}) {
+    const query: Record<string, any> = {};
+
+    if (filter.questionnaireId) {
+      query.questionnaireId = new Types.ObjectId(filter.questionnaireId);
+    }
+
+    if (filter.channelId) {
+      query.channelId = new Types.ObjectId(filter.channelId);
+    }
+
+    if (filter.participantId) {
+      query.participantId = new Types.ObjectId(filter.participantId);
+    }
+
+    if (filter.status) {
+      query.status = filter.status;
+    }
+
+    if (filter.search?.trim()) {
+      const regex = new RegExp(filter.search.trim(), 'i');
+      query.$or = [
+        { participantId: isValidObjectId(filter.search.trim()) ? new Types.ObjectId(filter.search.trim()) : undefined },
+        { questionnaireId: isValidObjectId(filter.search.trim()) ? new Types.ObjectId(filter.search.trim()) : undefined },
+        { channelId: isValidObjectId(filter.search.trim()) ? new Types.ObjectId(filter.search.trim()) : undefined },
+        { workflowInstanceId: isValidObjectId(filter.search.trim()) ? new Types.ObjectId(filter.search.trim()) : undefined },
+        { status: regex },
+        { state: regex },
+      ].filter(Boolean);
+    }
+
+    return toDomain(await this.model.find(query).sort({ createdAt: -1 }).lean());
   }
 
   async delete(id: string) {

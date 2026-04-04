@@ -5,6 +5,11 @@ import { IsOptional, IsEnum, IsString } from 'class-validator';
 import { ProcessMode, QuestionType } from '../../../../shared/domain';
 
 export class FilterQuestionDto {
+  @ApiPropertyOptional({ description: 'Search by question text, attribute, description, or questionnaire id' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

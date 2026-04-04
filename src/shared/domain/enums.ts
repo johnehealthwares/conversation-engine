@@ -15,6 +15,8 @@ export enum RenderMode {
   TEXTAREA = 'textarea',
   RADIO = 'radio',
   CHECKBOX = 'checkbox',
+  YES_NO = 'yes_no',
+  STAR_RATING = 'star_rating',
   TEXT_WITH_LINK = 'TEXT_WITH_LINK',
   LINK = 'LINK',
   DROPDOWN = 'dropdown',

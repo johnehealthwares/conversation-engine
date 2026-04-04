@@ -18,6 +18,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(json({ limit: '50mb' }));
 app.use(urlencoded({ extended: true, limit: '50mb' }));
+app.enableCors();
 
   logger.log('[boot:init] Conversation Engine is wiring up application modules.');
 
