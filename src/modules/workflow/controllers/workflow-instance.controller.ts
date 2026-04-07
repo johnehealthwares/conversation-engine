@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { WorkflowInstanceService } from '../services/workflow-instance';
 import {
@@ -38,10 +38,16 @@ export class WorkflowInstanceController {
     return this.workflowInstanceService.findById(id);
   }
 
+  @Put(':id')
+  @ApiOperation({ summary: 'Replace a workflow instance' })
+  replace(@Param('id') id: string, @Body() dto: UpdateWorkflowInstanceDto) {
+    return this.workflowInstanceService.replace(id, dto);
+  }
+
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a workflow instance' })
-  update(@Param('id') id: string, @Body() dto: UpdateWorkflowInstanceDto) {
-    return this.workflowInstanceService.update(id, dto);
+  @ApiOperation({ summary: 'Patch a workflow instance' })
+  patch(@Param('id') id: string, @Body() dto: UpdateWorkflowInstanceDto) {
+    return this.workflowInstanceService.patch(id, dto);
   }
 
   @Delete(':id')

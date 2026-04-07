@@ -5,6 +5,8 @@ import { Model, Types } from 'mongoose';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WorkflowEvent, WorkflowEventDocument } from '../entities/event';
 import { FilterWorkflowEventDto } from '../controllers/dto/filter-workflow-event.dto';
+import { IWorkflowEvent } from '../interfaces/event.interface';
+import { WorkflowEventType } from '../entities/step-transition';
 
 @Injectable()
 export class WorkflowEventService {
@@ -13,13 +15,59 @@ export class WorkflowEventService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-  async emit(workflowInstanceId: string, type: string, payload?: Record<string, any>) {
-    // save event to DB
-    const event = new this.eventModel({ workflowInstanceId, type, payload });
+  async emit(input: {
+    workflowInstanceId: string;
+    type: WorkflowEventType;
+    payload?: Record<string, any>;
+    workflowId?: string;
+    stepId?: string;
+    correlationId?: string;
+    idempotencyKey?: string;
+    stateSchema?: Record<string, any>;
+    sequence?: number;
+  }) {
+    if (input.idempotencyKey) {
+      const existing = await this.eventModel
+        .findOne({ idempotencyKey: input.idempotencyKey })
+        .exec();
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const event = new this.eventModel({
+      workflowInstanceId: input.workflowInstanceId,
+      workflowId: input.workflowId,
+      stepId: input.stepId,
+      type: input.type,
+      payload: input.payload,
+      correlationId: input.correlationId,
+      idempotencyKey: input.idempotencyKey,
+      stateSchema: input.stateSchema,
+      sequence: input.sequence,
+    });
     await event.save();
 
-    // emit event on EventBus
-    this.eventEmitter.emit(type, { workflowInstanceId, payload });
+    const emittedEvent: IWorkflowEvent = {
+      id: event._id.toString(),
+      type: input.type,
+      payload: input.payload ?? {},
+      context: {
+        workflowId: input.workflowId,
+        workflowInstanceId: input.workflowInstanceId,
+        stepId: input.stepId,
+        correlationId: input.correlationId,
+      },
+      meta: {
+        timestamp: event.createdAt?.toISOString() ?? new Date().toISOString(),
+        source: 'workflow-event-service',
+        idempotencyKey: input.idempotencyKey,
+        sequence: input.sequence,
+        stateSchema: input.stateSchema ?? null,
+      },
+    };
+
+    this.eventEmitter.emit(input.type, emittedEvent);
     return event;
   }
 

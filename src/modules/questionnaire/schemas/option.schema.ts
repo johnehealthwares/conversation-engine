@@ -6,8 +6,7 @@ import { Document, Types, Schema as MongooseSchema } from 'mongoose';
 @Schema({ timestamps: true })
 export class Option {
    @Prop({ type: Types.ObjectId })
-   _id: Types.ObjectId;
-
+   _id: Types.ObjectId
   @Prop({ required: true })
   key: string;
 

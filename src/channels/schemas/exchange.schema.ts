@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
+import { Schema as MongooseSchema, Types } from 'mongoose';
 
 export type ExchangeDocument = Exchange;
 
@@ -16,9 +16,8 @@ export enum ExchangeStatus {
 
 @Schema({ timestamps: true })
 export class Exchange {
-  @Prop({ type: Types.ObjectId })
-  _id: Types.ObjectId;
-
+  @Prop({ type: MongooseSchema.Types.ObjectId })
+  _id: Types.ObjectId
   @Prop()
   channelId?: string;
 

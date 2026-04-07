@@ -8,24 +8,21 @@ import { Option, OptionSchema } from './option.schema';
 @Schema({ timestamps: true })
 export class Question {
   @Prop({ type: Types.ObjectId })
-  _id: Types.ObjectId;
-
+  _id: Types.ObjectId
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Questionnaire',
     required: true,
     index: true,
   })
-  questionnaireId: Types.ObjectId;
-
+  questionnaireId: Types.ObjectId
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: 'OptionList',
     required: false,
     index: true,
   })
-  optionListId?: Types.ObjectId;
-
+  optionListId?: Types.ObjectId
   @Prop({ required: true, trim: true })
   attribute: string;
 
@@ -72,7 +69,7 @@ export class Question {
   isActive: boolean;
 
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Question',
     required: false,
     index: true,
@@ -81,21 +78,19 @@ export class Question {
 
 
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Question',
     required: false,
     index: true,
   })
-  nextQuestionId?: Types.ObjectId;
-
+  nextQuestionId?: Types.ObjectId
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: 'Questionnaire',
     required: false,
     index: true,
   })
-  childQuestionnaireId?: Types.ObjectId;
-
+  childQuestionnaireId?: Types.ObjectId
   @Prop({ type: [OptionSchema], default: [] })
   options?: Option[];
 

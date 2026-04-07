@@ -4,6 +4,7 @@ import {
   Post,
   Patch,
   Delete,
+  Put,
   Param,
   Body,
   Query,
@@ -36,12 +37,20 @@ export class OptionListController {
     return this.service.findOne(id);
   }
 
-  @Patch(':id')
-  update(
+  @Put(':id')
+  replace(
     @Param('id') id: string,
     @Body() dto: UpdateOptionListDto,
   ) {
-    return this.service.update(id, dto);
+    return this.service.replace(id, dto);
+  }
+
+  @Patch(':id')
+  patch(
+    @Param('id') id: string,
+    @Body() dto: UpdateOptionListDto,
+  ) {
+    return this.service.patch(id, dto);
   }
 
   @Delete(':id')

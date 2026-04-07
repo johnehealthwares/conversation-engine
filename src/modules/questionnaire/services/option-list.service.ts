@@ -72,10 +72,36 @@ export class OptionListService {
   }
 
   async update(id: string, dto: UpdateOptionListDto) {
+    return this.patch(id, dto);
+  }
+
+  async replace(id: string, dto: UpdateOptionListDto) {
     const updateData: any = { ...dto };
     if (dto.options) {
       updateData.options = this.mapDtoOptions(dto.options as any);
     }
+
+    const updated = await this.optionListModel.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true },
+    );
+
+    if (!updated) throw new NotFoundException('OptionList not found');
+    return updated;
+  }
+
+  async patch(id: string, dto: UpdateOptionListDto) {
+    const updateData: any = { ...dto };
+    if (dto.options) {
+      updateData.options = this.mapDtoOptions(dto.options as any);
+    }
+
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
 
     const updated = await this.optionListModel.findByIdAndUpdate(
       id,

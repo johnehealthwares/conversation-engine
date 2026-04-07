@@ -3,19 +3,22 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { WorkflowEventType } from '../../entities/step-transition';
 
 export class WorkflowTransitionDto {
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  event: string;
+
+  @ApiProperty({ enum: WorkflowEventType })
+  @IsIn(Object.values(WorkflowEventType))
+  event: WorkflowEventType;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -72,10 +75,21 @@ export class CreateWorkflowDto {
   @Type(() => WorkflowStepDto)
   steps: WorkflowStepDto[];
 
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  version?: number;
+
+  @ApiPropertyOptional({ default: 25 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxTransitionsPerRun?: number;
+
   @ApiProperty({ default: true })
   @IsBoolean()
   isActive: boolean;
 }
 
 export class UpdateWorkflowDto extends PartialType(CreateWorkflowDto) {}
-

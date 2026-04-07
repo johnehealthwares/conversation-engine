@@ -1,7 +1,7 @@
 import { InjectModel } from "@nestjs/mongoose";
 import { ConversationDomain, ConversationStatus } from "../../../../shared/domain";
 import { Conversation } from "../../schemas/conversation.schema";
-import { isValidObjectId, Model, Types } from "mongoose";
+import mongoose, { isValidObjectId, Model } from "mongoose";
 import { toDomain } from "../../../../shared/converters";
 import { NotFoundException } from "@nestjs/common";
 import { FilterConversationDto } from "../../controllers/dto/filter-conversation.dto";
@@ -13,23 +13,22 @@ export class ConversationRepository {
   async create(conversation: ConversationDomain): Promise<ConversationDomain> {
     const payload: any = { ...conversation };
     if (conversation.id) {
-      payload._id = new Types.ObjectId(conversation.id);
+      payload._id =  conversation.id;
       delete payload.id;
     }
     const schema = await this.model.create(payload);
     return toDomain(schema);
   }
-  async save(id: string, data: Partial<ConversationDomain>): Promise<ConversationDomain> {
-    // 🔹 Build raw $set update (PATCH semantics)
+  async patch(id: string, data: Partial<ConversationDomain>): Promise<ConversationDomain> {
     const $set: any = {};
     Object.keys(data).forEach((key) => {
       const value = data[key as keyof typeof data];
 
-      if (value !== undefined) $set[key] = isValidObjectId(value) ? new Types.ObjectId(value as string) : value;
+      if (value !== undefined) $set[key] = value;
     });
     const conversation = await this.model
       .findByIdAndUpdate(
-        new Types.ObjectId(id),
+        id,
         { ...$set },
         { returnDocument: 'after' },
       )
@@ -38,19 +37,42 @@ export class ConversationRepository {
     return toDomain(conversation);
   }
 
+  async replace(id: string, data: Partial<ConversationDomain>): Promise<ConversationDomain> {
+    const payload: Record<string, unknown> = {};
+
+    Object.entries(data).forEach(([key, value]) => {
+      payload[key] = value;
+    });
+
+    const conversation = await this.model
+      .findByIdAndUpdate(
+        id,
+        payload,
+        { returnDocument: 'after', overwrite: false },
+      )
+      .lean();
+
+    if (!conversation) throw new NotFoundException("conversation not foupasnd");
+    return toDomain(conversation);
+  }
+
+  async save(id: string, data: Partial<ConversationDomain>): Promise<ConversationDomain> {
+    return this.patch(id, data);
+  }
+
   async findAll(filter: FilterConversationDto = {}) {
     const query: Record<string, any> = {};
 
     if (filter.questionnaireId) {
-      query.questionnaireId = new Types.ObjectId(filter.questionnaireId);
+      query.questionnaireId = filter.questionnaireId;
     }
 
     if (filter.channelId) {
-      query.channelId = new Types.ObjectId(filter.channelId);
+      query.channelId = filter.channelId;
     }
 
     if (filter.participantId) {
-      query.participantId = new Types.ObjectId(filter.participantId);
+      query.participantId = filter.participantId;
     }
 
     if (filter.status) {
@@ -60,10 +82,10 @@ export class ConversationRepository {
     if (filter.search?.trim()) {
       const regex = new RegExp(filter.search.trim(), 'i');
       query.$or = [
-        { participantId: isValidObjectId(filter.search.trim()) ? new Types.ObjectId(filter.search.trim()) : undefined },
-        { questionnaireId: isValidObjectId(filter.search.trim()) ? new Types.ObjectId(filter.search.trim()) : undefined },
-        { channelId: isValidObjectId(filter.search.trim()) ? new Types.ObjectId(filter.search.trim()) : undefined },
-        { workflowInstanceId: isValidObjectId(filter.search.trim()) ? new Types.ObjectId(filter.search.trim()) : undefined },
+        { participantId: filter.search.trim()},
+        { questionnaireId: filter.search.trim()},
+        { channelId: filter.search.trim()},
+        { workflowInstanceId: filter.search.trim()},
         { status: regex },
         { state: regex },
       ].filter(Boolean);
@@ -73,7 +95,7 @@ export class ConversationRepository {
   }
 
   async delete(id: string) {
-    await this.model.findByIdAndDelete(new Types.ObjectId(id));
+    await this.model.findByIdAndDelete(id);
   }
 
   async findById(id: string): Promise<ConversationDomain | null> {
@@ -85,7 +107,6 @@ export class ConversationRepository {
 
   async findActiveById(id: string): Promise<ConversationDomain | null> {
     const conversation = await this.model.findOne({
-      _id: id,
       status: ConversationStatus.ACTIVE
     });
     if (!conversation) return null;

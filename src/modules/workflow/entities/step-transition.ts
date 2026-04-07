@@ -1,5 +1,16 @@
 export type StepTransition = {
-  event: string; // e.g. ANSWER_VALID
+  event: WorkflowEventType | '*'; // e.g. ANSWER_VALID
   condition?: string; // e.g. payload.dose > 400
   nextStepId: string;
 };
+
+export enum WorkflowEventType {
+  ANSWER_RECEIVED = 'ANSWER_RECEIVED',
+  ANSWER_VALID = 'ANSWER_VALID',
+  ANSWER_INVALID = 'ANSWER_INVALID',
+  ACTION_COMPLETED = 'ACTION_COMPLETED',
+  ACTION_FAILED = 'ACTION_FAILED',
+  CONVERSATION_STOPPED = 'CONVERSATION_STOPPED',
+  CONVERSATION_COMPLETED = 'CONVERSATION_COMPLETED',
+  CONVERSATION_STARTED = 'CONVERSATION_STARTED',
+}

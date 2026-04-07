@@ -7,11 +7,29 @@ export class WorkflowEvent {
   @Prop({ required: true })
   workflowInstanceId: string;
 
+  @Prop()
+  workflowId?: string;
+
+  @Prop()
+  stepId?: string;
+
   @Prop({ required: true })
   type: string; // e.g., ANSWER_VALID, QUESTIONNAIRE_COMPLETED
 
   @Prop({ type: Object, default: {} })
   payload?: Record<string, any>;
+
+  @Prop()
+  correlationId?: string;
+
+  @Prop()
+  idempotencyKey?: string;
+
+  @Prop({ type: Object, default: null })
+  stateSchema?: Record<string, any> | null;
+
+  @Prop()
+  sequence?: number;
 
   @Prop({ default: false })
   processed: boolean;

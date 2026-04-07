@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { ExchangeService } from '../services/exchange.service';
 import { ChannelType } from '../../shared/domain';
 import { WhatsAppWebhookDto } from '../controllers/dto/whatsapp.dto';
-import { Types } from 'mongoose';
+import { Schema as MongooseSchema } from 'mongoose';
 import { WhatsappSender } from '../senders/whatsapp-sender';
 
 @Injectable()

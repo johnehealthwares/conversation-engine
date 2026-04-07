@@ -10,7 +10,7 @@ type SeedResult = {
 };
 
 type SeedWorkflow = {
-  _id: Types.ObjectId;
+  _id: Types.ObjectId  
   name: string;
   code: string;
   metadata?: Record<string, any>;
@@ -285,6 +285,63 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         transitions: [
           {
             event: 'ACTION_COMPLETED',
+            nextStepId: 'done',
+          },
+        ],
+      },
+      {
+        id: 'done',
+        type: 'END',
+        transitions: [],
+      },
+    ],
+  },
+  {
+    _id: new Types.ObjectId('680000000000000000000003'),
+    name: 'HTTP Post Authentication First Workflow',
+    code: 'WF_HTTP_POST_AUTH_FIRST',
+    metadata: {
+      purpose: 'http-post-auth',
+      description:
+        'Runs an authenticated HTTP_POST action before the first questionnaire step so the handler, response mapping, and runtime config can be tested.',
+    },
+    isActive: true,
+    steps: [
+      {
+        id: 'authenticate_first',
+        type: 'ACTION',
+        config: {
+          action: 'HTTP_POST',
+          baseUrl: '{{env.HS_BACKEND_BASE_URL}}',
+          url: '{{env.HS_BACKEND_BASE_URL}}/appointments',
+          username: '{{env.HS_BACKEND_USERNAME}}',
+          password: '{{env.HS_BACKEND_PASSWORD}}',
+          accessTokenDuration: 3600000,
+          responseMapping: {
+            accessToken: {
+              path: 'data.accessToken',
+              transform: 'string',
+              default: null,
+            },
+          },
+        },
+        transitions: [
+          {
+            event: 'ACTION_COMPLETED',
+            nextStepId: 'reference_number',
+          },
+          {
+            event: 'ACTION_FAILED',
+            nextStepId: 'reference_number',
+          },
+        ],
+      },
+      {
+        id: 'reference_number',
+        type: 'QUESTIONNAIRE',
+        transitions: [
+          {
+            event: 'CONVERSATION_COMPLETED',
             nextStepId: 'done',
           },
         ],

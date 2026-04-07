@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { Participant } from '../../schemas/participant.schema';
 import { ParticipantDomain } from '../../../../shared/domain';
 import { toDomain } from '../../../../shared/converters';
+import { FilterParticipantDto } from '../../controllers/dto/filter-participant.dto';
 
 @Injectable()
 export class ParticipantRepository {
@@ -20,13 +21,52 @@ export class ParticipantRepository {
     return this.participantModel.findById(id).exec();
   }
 
-  async findAll(): Promise<ParticipantDomain[]> {
-    return this.participantModel.find().sort({ createdAt: -1 }).exec();
+  async findAll(filter: FilterParticipantDto = {}): Promise<ParticipantDomain[]> {
+    const query: Record<string, unknown> = {};
+
+    if (filter.phone) {
+      query.phone = filter.phone;
+    }
+
+    if (filter.email) {
+      query.email = filter.email;
+    }
+
+    if (filter.search?.trim()) {
+      const regex = new RegExp(filter.search.trim(), 'i');
+      if (filter.attribute === 'phone') {
+        query.phone = regex;
+      } else if (filter.attribute === 'email') {
+        query.email = regex;
+      } else {
+        query.$or = [
+          { firstName: regex },
+          { lastName: regex },
+          { email: regex },
+          { phone: regex },
+        ];
+      }
+    }
+
+    const result = await this.participantModel.find(query).sort({ updatedAt: -1, createdAt: -1 }).lean().exec();
+    return toDomain(result);
+  }
+
+  async replace(id: string, update: Partial<ParticipantDomain>): Promise<ParticipantDomain> {
+    const schema = await this.participantModel.findByIdAndUpdate(id, update, { new: true }).exec();
+    return toDomain(schema)
+  }
+
+  async patch(id: string, update: Partial<ParticipantDomain>): Promise<ParticipantDomain> {
+    const payload = Object.fromEntries(
+      Object.entries(update).filter(([, value]) => value !== undefined),
+    );
+    const schema = await this.participantModel.findByIdAndUpdate(id, payload, { new: true }).exec();
+    return toDomain(schema)
   }
 
   async update(id: string, update: Partial<ParticipantDomain>): Promise<ParticipantDomain> {
-    const schema = this.participantModel.findByIdAndUpdate(id, update, { new: true }).exec();
-    return toDomain(schema)
+    return this.patch(id, update);
   }
 
   async delete(id: string): Promise<{ deletedCount?: number }> {
@@ -35,6 +75,11 @@ export class ParticipantRepository {
 
   async findByPhone(phone: string): Promise<ParticipantDomain | null> {
     const schema = await this.participantModel.findOne({ phone }).lean();
+    return toDomain(schema);
+  }
+
+  async findByEmail(email: string): Promise<ParticipantDomain | null> {
+    const schema = await this.participantModel.findOne({ email }).lean();
     return toDomain(schema);
   }
 

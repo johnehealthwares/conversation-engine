@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import { Schema as MongooseSchema, Types } from 'mongoose';
 
 export const toDomain = (doc: any): any => {
   if (!doc) return doc;

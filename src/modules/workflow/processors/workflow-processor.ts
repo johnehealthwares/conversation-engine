@@ -5,7 +5,9 @@ import type { IWorkflowEvent } from '../interfaces/event.interface';
 import { WorkflowInstanceService } from '../services/workflow-instance';
 import { WorkflowService } from '../services/workflow-service';
 import { evaluateCondition } from '../utils/condition-evaluator';
-import axios from 'axios';
+import { StepRunnerService } from '../services/step-runner.service';
+import { WorkflowHistoryService } from '../services/workflow-history.service';
+import { WorkflowEventType } from '../entities/step-transition';
 
 @Injectable()
 export class WorkflowProcessorService {
@@ -14,12 +16,14 @@ export class WorkflowProcessorService {
   constructor(
     private readonly instanceService: WorkflowInstanceService,
     private readonly workflowService: WorkflowService,
-  ) {}
+    private readonly stepRunnerService: StepRunnerService,
+    private readonly workflowHistoryService: WorkflowHistoryService,
+  ) { }
 
   // ---------------------------
   // GENERIC HANDLER
   // ---------------------------
-  private async processEvent(eventType: string, event: IWorkflowEvent) {
+  private async processEvent(eventType: WorkflowEventType, event: IWorkflowEvent) {
     const workflowInstanceId = event.context?.workflowInstanceId;
     if (!workflowInstanceId) {
       this.logger.warn(
@@ -34,17 +38,54 @@ export class WorkflowProcessorService {
 
     const instance = await this.instanceService.findById(workflowInstanceId);
     const workflow = await this.workflowService.findById(instance.workflowId);
-    if(!workflow) return;
-    if (!instance.currentStepId) return;
-
+    if (!workflow) {
+      this.logger.error(`Workflow not found: ${instance.workflowId}`);
+      return;
+    }
+    if (!instance.currentStepId) {
+      this.logger.warn(`No currentStepId for instance=${workflowInstanceId}`);
+      return;
+    }
     const step = workflow.steps.find(s => s.id === instance.currentStepId);
-    if (!step) return;
+
+    if (!step) {
+      this.logger.error(`WorflowInstanceStep not found: for currentStepId ${instance.currentStepId}, will now map with config?.stepAttribute`);
+      return;
+    }
+    const maxTransitionsPerRun = Math.max(1, workflow.maxTransitionsPerRun ?? 25);
+    const transitionsRun = Number(instance.state?.__transitionsRun ?? 0);
+
+
+    if (transitionsRun >= maxTransitionsPerRun) {
+      this.logger.warn(
+        `[workflow:event] maxTransitionsPerRun reached for instance=${workflowInstanceId}`,
+      );
+      return;
+    }
 
     // 1️⃣ Merge payload into state
     const updatedState = {
       ...instance.state,
       ...(event.payload || {}),
+      __transitionsRun: transitionsRun + 1,
     };
+
+    // const candidates = step.transitions.filter(//TODO:  Is this relevant?
+    //   t => t.event === eventType || t.event === '*'
+    // );
+
+    // if (!candidates.length) {
+    //   this.logger.debug(
+    //     `No transitions for event=${eventType} on step=${step.id}`
+    //   );
+    //   return;
+    // }
+
+    await this.workflowHistoryService.record(
+      workflowInstanceId,
+      instance.currentStepId,
+      eventType,
+    );
 
     // 2️⃣ Find matching transition
     const transition = step.transitions.find(t => {
@@ -53,6 +94,13 @@ export class WorkflowProcessorService {
     });
 
     if (!transition) return;
+
+
+    await this.workflowHistoryService.record(
+      workflowInstanceId,
+      instance.currentStepId,
+      eventType,
+    );
 
     // 3️⃣ Move to next step
     const nextStep = workflow.steps.find(s => s.id === transition.nextStepId);
@@ -64,7 +112,7 @@ export class WorkflowProcessorService {
 
     // 4️⃣ Execute step if needed
     if (nextStep) {
-      await this.executeStep(nextStep, instance.id, updatedState);
+      await this.executeStep(nextStep, instance.id, updatedState, workflow.id, event);
     }
   }
 
@@ -78,11 +126,18 @@ export class WorkflowProcessorService {
   private async executeStep(
     step: any,
     workflowInstanceId: string,
-    state: Record<string, any>
+    state: Record<string, any>,
+    workflowId: string,
+    triggerEvent: IWorkflowEvent,
   ) {
     switch (step.type) {
       case 'ACTION':
-        await this.executeAction(step, workflowInstanceId, state);
+        await this.stepRunnerService.runStep(
+          workflowId,
+          step.id,
+          workflowInstanceId,
+          triggerEvent,
+        );
         break;
 
       case 'END':
@@ -100,154 +155,42 @@ export class WorkflowProcessorService {
   }
 
   // ---------------------------
-  // ACTION EXECUTOR
-  // ---------------------------
-  private async executeAction(
-    step: any,
-    workflowInstanceId: string,
-    state: Record<string, any>
-  ) {
-    try {
-      const {
-        action,
-        url,
-        method,
-        mapping,
-        payload: explicitPayload,
-        headers,
-        saveResponseToState,
-      } = step.config || {};
-
-      let payload = { ...state };
-
-      // Optional mapping
-      if (mapping) {
-        payload = Object.keys(mapping).reduce((acc, key) => {
-          acc[key] = this.resolveConfigValue(mapping[key], state);
-          return acc;
-        }, {} as Record<string, any>);
-      } else if (explicitPayload) {
-        payload = this.resolveConfigValue(explicitPayload, state);
-      }
-
-      let responseData: Record<string, any> = {};
-
-      if ((action === 'HTTP_POST' || action === 'HTTP_REQUEST') && url) {
-        const resolvedUrl = this.resolveTemplate(url, {
-          state,
-          ...state,
-          env: process.env,
-        });
-        const resolvedHeaders = this.resolveConfigValue(headers || {}, state);
-        const response = await axios.request({
-          url: resolvedUrl,
-          method: method || 'POST',
-          headers: resolvedHeaders,
-          data: method === 'GET' ? undefined : payload,
-        });
-        responseData = response.data || {};
-      }
-
-      // emit ACTION_COMPLETED
-      await this.processEvent('ACTION_COMPLETED', {
-        id: `action-completed:${workflowInstanceId}`,
-        type: 'ACTION_COMPLETED',
-        payload: this.mapResponseToState(responseData, saveResponseToState, state),
-        context: { workflowInstanceId },
-        meta: {
-          timestamp: new Date().toISOString(),
-        },
-      });
-
-    } catch (error) {
-      this.logger.error('Action execution failed', error);
-
-      // Optional: emit failure event
-      await this.processEvent('ACTION_FAILED', {
-        id: `action-failed:${workflowInstanceId}`,
-        type: 'ACTION_FAILED',
-        payload: { error: error.message },
-        context: { workflowInstanceId },
-        meta: {
-          timestamp: new Date().toISOString(),
-        },
-      });
-    }
-  }
-
-  private mapResponseToState(
-    responseData: Record<string, any>,
-    mapping?: Record<string, any>,
-    state?: Record<string, any>,
-  ): Record<string, any> {
-    if (!mapping) {
-      return {};
-    }
-
-    return Object.entries(mapping).reduce((acc, [key, value]) => {
-      acc[key] = this.resolveTemplate(String(value), {
-        response: responseData,
-        state: state || {},
-        env: process.env,
-      });
-      return acc;
-    }, {} as Record<string, any>);
-  }
-
-  private resolveConfigValue(value: any, state: Record<string, any>): any {
-    if (typeof value === 'string') {
-      if (!value.includes('{{') && Object.prototype.hasOwnProperty.call(state, value)) {
-        return state[value];
-      }
-      return this.resolveTemplate(value, { state, ...state, env: process.env });
-    }
-
-    if (Array.isArray(value)) {
-      return value.map((item) => this.resolveConfigValue(item, state));
-    }
-
-    if (value && typeof value === 'object') {
-      return Object.entries(value).reduce((acc, [key, item]) => {
-        acc[key] = this.resolveConfigValue(item, state);
-        return acc;
-      }, {} as Record<string, any>);
-    }
-
-    return value;
-  }
-
-  private resolveTemplate(template: string, context: Record<string, any>): string {
-    return template.replace(/\{\{\s*([^}]+)\s*\}\}/g, (_match, rawPath) => {
-      const value = rawPath
-        .trim()
-        .split('.')
-        .reduce((acc, key) => acc?.[key], context);
-      return value === undefined || value === null ? '' : String(value);
-    });
-  }
-
-  // ---------------------------
   // EVENT HANDLERS
   // ---------------------------
 
-  @OnEvent('CONVERSATION_STARTED')
+  @OnEvent(WorkflowEventType.CONVERSATION_STARTED)
   async handleConversationStarted(event: IWorkflowEvent) {
     await this.handleEvent(event);
   }
 
-  @OnEvent('ANSWER_VALID')
+  @OnEvent(WorkflowEventType.ANSWER_VALID)
   async handleAnswerValid(event: IWorkflowEvent) {
     await this.handleEvent(event);
   }
 
-  @OnEvent('CONVERSATION_COMPLETED')
+  @OnEvent(WorkflowEventType.ANSWER_INVALID)
+  async handleAnswerInvalid(event: IWorkflowEvent) {
+    await this.handleEvent(event);
+  }
+
+  @OnEvent(WorkflowEventType.ACTION_COMPLETED)
+  async handleActionCompleted(event: IWorkflowEvent) {
+    await this.handleEvent(event);
+  }
+
+  @OnEvent(WorkflowEventType.ACTION_FAILED)
+  async handleActionFailed(event: IWorkflowEvent) {
+    await this.handleEvent(event);
+  }
+
+  @OnEvent(WorkflowEventType.CONVERSATION_COMPLETED)
   async handleConversationCompleted(event: IWorkflowEvent) {
     await this.handleEvent(event);
   }
 
-  @OnEvent('CONVERSATION_STOPPED')
+  @OnEvent(WorkflowEventType.CONVERSATION_STOPPED)
   async handleConversationStopped(event: IWorkflowEvent) {
-    await this.processEvent('CONVERSATION_STOPPED', event);
+    await this.processEvent(WorkflowEventType.CONVERSATION_STOPPED, event);
 
     // optionally force stop
     const workflowInstanceId = event.context?.workflowInstanceId;

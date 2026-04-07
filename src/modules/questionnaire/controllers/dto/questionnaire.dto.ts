@@ -43,6 +43,11 @@ export class CreateQuestionnaireDto {
   @IsString()
   startQuestionId?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  workflowId?: string;
+
   @ApiProperty({ default: true })
   @IsBoolean()
   allowBackNavigation: boolean;
@@ -95,6 +100,11 @@ export class UpdateQuestionnaireDto {
   @IsOptional()
   @IsString()
   startQuestionId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  workflowId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

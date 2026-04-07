@@ -2,6 +2,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { EventBusService } from "src/modules/workflow/services/event-bus.service";
 import { WorkflowInstanceService } from "src/modules/workflow/services/workflow-instance";
 import { WorkflowInstanceDomain } from "src/shared/domain";
+import { ConversationService } from "../services/conversation.service";
+import { QuestionnaireService } from "src/modules/questionnaire/services/questionnaire.service";
+import { WorkflowEventContext, WorkflowEventPayload } from "src/modules/workflow/interfaces/event.interface";
+import { WorkflowEventType } from "src/modules/workflow/entities/step-transition";
 
 @Injectable()
 export class WorkflowProcessorService {
@@ -10,45 +14,53 @@ export class WorkflowProcessorService {
   constructor(
     private readonly eventBusService: EventBusService,
     private readonly workflowInstanceService: WorkflowInstanceService,
+    private readonly questionnaireService: QuestionnaireService,
   ) { }
 
   private async dispatch(
-    type: string,
-    payload: Record<string, any>,
-    context: Record<string, any>,
+    type: WorkflowEventType,
+    payload: WorkflowEventPayload,
+    context: WorkflowEventContext & {conversationId: string},
   ) {
-    await this.eventBusService.emit(type, payload, context);
+    const workflowInstance = await this.workflowInstanceService.getActiveByConversationId(context.conversationId);
+    if (workflowInstance) {
+      context.workflowInstanceId = workflowInstance.id;
+      await this.eventBusService.emit(type, payload, context);
+    }
+  }
+
+  async conversationStarted(conversationId: string, questionnaireId: string, participant: string, value: string) {
+    this.logger.log(`[workflow:conversation-started] instance=${conversationId} participant=${participant}`);
+      const questionnaire = await this.questionnaireService.findOne(questionnaireId);
+      if(questionnaire.workflowId) {
+        await this.createWorkFlowInstance(questionnaire.workflowId, conversationId, questionnaireId, value)
+      }
+    await this.dispatch(WorkflowEventType.CONVERSATION_STARTED, {}, { stepId: 'started', conversationId, value, participant });
+  }
+
+  async conversationStopped(conversationId: string, participant: string, attribute: string, value: string, payload: Record<string, string>) {
+    this.logger.warn(`[workflow:conversation-stopped] instance=${conversationId} attribute=${attribute}`);
+    await this.dispatch(WorkflowEventType.CONVERSATION_STOPPED, payload, { conversationId, stepId: attribute, value, participant });
+  }
+
+  async answerValid(conversationId: string, participant: string, attribute: string, value: string, payload: Record<string, string>) {
+    this.logger.debug(`[workflow:answer-valid] instance=${conversationId} attribute=${attribute}`);
+    await this.dispatch(WorkflowEventType.ANSWER_VALID, payload, { conversationId, stepId: attribute, value, participant });
   }
 
 
-  async conversationStarted(workflowInstanceId: string, participant: string, value: string) {
-    this.logger.log(`[workflow:conversation-started] instance=${workflowInstanceId} participant=${participant}`);
-    await this.dispatch('CONVERSATION_STARTED', {}, { workflowInstanceId, value, participant });
-  }
-
-  async conversationStopped(workflowInstanceId: string, participant: string, attribute: string, value: string, payload: Record<string, string>) {
-    this.logger.warn(`[workflow:conversation-stopped] instance=${workflowInstanceId} attribute=${attribute}`);
-    await this.dispatch('CONVERSATION_STOPPED', payload, { workflowInstanceId, stepId: attribute, value, participant });
-  }
-
-  async answerValid(workflowInstanceId: string, participant: string, attribute: string, value: string, payload: Record<string, string>) {
-    this.logger.debug(`[workflow:answer-valid] instance=${workflowInstanceId} attribute=${attribute}`);
-    await this.dispatch('ANSWER_VALID', payload, { workflowInstanceId, stepId: attribute, value, participant });
+  async answerInValid(conversationId: string, participant: string, attribute: string, value: string, payload: Record<string, string>) {
+    this.logger.warn(`[workflow:answer-invalid] instance=${conversationId} attribute=${attribute}`);
+    await this.dispatch(WorkflowEventType.ANSWER_INVALID, payload, { conversationId, stepId: attribute, value, participant });
   }
 
 
-  async answerInValid(workflowInstanceId: string, participant: string, attribute: string, value: string, payload: Record<string, string>) {
-    this.logger.warn(`[workflow:answer-invalid] instance=${workflowInstanceId} attribute=${attribute}`);
-    await this.dispatch('ANSWER_INVALID', payload, { workflowInstanceId, stepId: attribute, value, participant });
+  async conversationCompleted(conversationId: string, participant: string, attribute: string, value: string, payload: Record<string, string>) {
+    this.logger.log(`[workflow:conversation-ended] instance=${conversationId} attribute=${attribute}`);
+    await this.dispatch(WorkflowEventType.CONVERSATION_COMPLETED, payload, { conversationId, stepId: attribute, value, participant });
   }
 
-
-  async conversationCompleted(workflowInstanceId: string, participant: string, attribute: string, value: string, payload: Record<string, string>) {
-    this.logger.log(`[workflow:conversation-ended] instance=${workflowInstanceId} attribute=${attribute}`);
-    await this.dispatch('CONVERSATION_COMPLETED', payload, { workflowInstanceId, stepId: attribute, value, participant });
-  }
-
-  async createWorkFlow(workflowId: string, conversationId: string, trigger: string, attribute: string): Promise<WorkflowInstanceDomain> {
+  async createWorkFlowInstance(workflowId: string, conversationId: string, trigger: string, attribute: string): Promise<WorkflowInstanceDomain> {
     this.logger.log(`[workflow:create] workflow=${workflowId} conversation=${conversationId} startStep=${attribute}`);
     const workflow = await this.workflowInstanceService.create(
       {

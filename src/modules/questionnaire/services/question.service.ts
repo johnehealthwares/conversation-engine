@@ -49,7 +49,19 @@ export class QuestionService {
     return mapQuestionEntityToDomain(schema);
   }
 
+    async findWorkflow(id: string): Promise<QuestionDomain> {
+    const schema = await this.repo.findById(id);
+    if (!schema) throw new NotFoundException(`Question with id ${id} does not eist`)
+    return mapQuestionEntityToDomain(schema);
+  }
+
+
+
   async update(id: string, dto: UpdateQuestionDto): Promise<QuestionDomain> {
+    return this.patch(id, dto);
+  }
+
+  async replace(id: string, dto: UpdateQuestionDto): Promise<QuestionDomain> {
     const domain: Partial<QuestionDomain> = {
       ...dto,
       questionnaireId: dto.questionnaireId?.toString(),
@@ -61,6 +73,25 @@ export class QuestionService {
         ...option
       })),
     };
+    return this.updateUseCase.execute(id, domain);
+  }
+
+  async patch(id: string, dto: UpdateQuestionDto): Promise<QuestionDomain> {
+    const domain: Partial<QuestionDomain> = {
+      questionnaireId: dto.questionnaireId?.toString(),
+      aiConfig: dto.aiConfig as AIQuestionConfig | undefined,
+      optionSource: dto.optionSource as any,
+      apiNavigation: dto.apiNavigation as any,
+      validationRules: dto.validationRules as ValidationRule[] | undefined,
+      options: dto.options?.map((option) => ({
+        ...option
+      })),
+    };
+    Object.entries(dto).forEach(([key, value]) => {
+      if (value !== undefined) {
+        (domain as Record<string, unknown>)[key] = value;
+      }
+    });
     return this.updateUseCase.execute(id, domain);
   }
 

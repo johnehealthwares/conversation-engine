@@ -15,11 +15,7 @@ export class WorkflowEventController {
   @Post()
   @ApiOperation({ summary: 'Emit and persist a workflow event' })
   emit(@Body() dto: EmitWorkflowEventDto) {
-    return this.workflowEventService.emit(
-      dto.workflowInstanceId,
-      dto.type,
-      dto.payload,
-    );
+    return this.workflowEventService.emit(dto);
   }
 
   @Get()

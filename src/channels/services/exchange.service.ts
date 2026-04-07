@@ -24,7 +24,7 @@ export class ExchangeService implements OnModuleInit {
 
   constructor(
     @InjectModel(Exchange.name)
-    private readonly exchangeModel: Model<ExchangeDocument>,
+    private readonly exchangeModel: Model<Exchange>,
     @Inject(forwardRef(() => ConversationService))
     private readonly conversationService: ConversationService
   ) { }
@@ -74,6 +74,7 @@ export class ExchangeService implements OnModuleInit {
   }
 
   async create(payload: CreateExchangePayload): Promise<Exchange> {
+    payload._id = new Types.ObjectId();
     return this.exchangeModel.create(payload);
   }
 
@@ -131,7 +132,6 @@ export class ExchangeService implements OnModuleInit {
       `[exchange:outbound] Logging outbound messageId=${payload.messageId} recipient=${payload.recipient}`,
     );
     return this.create({
-      _id: new Types.ObjectId(),
       channelId: payload.channelId,
       channelType: payload.channelType,
       direction: ExchangeDirection.OUTBOUND,
@@ -175,7 +175,6 @@ export class ExchangeService implements OnModuleInit {
       `[exchange:inbound] Logging inbound messageId=${payload.messageId} sender=${payload.sender}`,
     );
     const exchange = await this.create({
-      _id: new Types.ObjectId(),
       channelId: payload.channelId,
       channelType: payload.channelType,
       direction: ExchangeDirection.INBOUND,

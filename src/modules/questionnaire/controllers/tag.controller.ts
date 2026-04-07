@@ -4,6 +4,7 @@ import {
   Post,
   Patch,
   Delete,
+  Put,
   Param,
   Body,
 } from '@nestjs/common';
@@ -40,12 +41,20 @@ export class TagController {
     return this.tagService.findOne(id);
   }
 
-  @Patch(':id')
-  update(
+  @Put(':id')
+  replace(
     @Param('id') id: string,
     @Body() dto: UpdateTagDto,
   ) {
-    return this.tagService.update(id, dto);
+    return this.tagService.replace(id, dto);
+  }
+
+  @Patch(':id')
+  patch(
+    @Param('id') id: string,
+    @Body() dto: UpdateTagDto,
+  ) {
+    return this.tagService.patch(id, dto);
   }
 
   @Delete(':id')

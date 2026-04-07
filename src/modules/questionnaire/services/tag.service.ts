@@ -36,9 +36,27 @@ export class TagService {
   }
 
   async update(id: string, dto: UpdateTagDto) {
+    return this.patch(id, dto);
+  }
+
+  async replace(id: string, dto: UpdateTagDto) {
     const updated = await this.tagModel.findByIdAndUpdate(
       id,
-      { $set: dto },
+      dto,
+      { new: true },
+    );
+
+    if (!updated) throw new NotFoundException('Tag not found');
+    return updated;
+  }
+
+  async patch(id: string, dto: UpdateTagDto) {
+    const payload = Object.fromEntries(
+      Object.entries(dto).filter(([, value]) => value !== undefined),
+    );
+    const updated = await this.tagModel.findByIdAndUpdate(
+      id,
+      { $set: payload },
       { new: true },
     );
 

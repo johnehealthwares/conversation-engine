@@ -13,6 +13,7 @@ import { QuestionnaireModule } from '../questionnaire/questionnaire.module';
 import { WorkflowEngineModule } from '../workflow/workflow-engine.module';
 import { WorkflowProcessorService } from './processors/workflow-processor.service';
 import { ConversationController } from './controllers/conversation.controller';
+import { ParticipantController } from './controllers/participant.controller';
 import { Question, QuestionSchema } from '../questionnaire/schemas/question.schema';
 import { Questionnaire, QuestionnaireSchema } from '../questionnaire/schemas/questionnaire.schema';
 
@@ -29,7 +30,7 @@ import { Questionnaire, QuestionnaireSchema } from '../questionnaire/schemas/que
       { name: Questionnaire.name, schema: QuestionnaireSchema },
     ]),
   ],
-  controllers: [ConversationController],
+  controllers: [ConversationController, ParticipantController],
   providers: [
     ConversationService,
     ConversationRepository,

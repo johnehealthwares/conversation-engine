@@ -38,6 +38,7 @@ export class WorkflowEngineService {
     await this.stepRunner.runStep(
       workflowId,
       matched.toStepId,
+      workflowInstance?.id!,
     );
   }
 }

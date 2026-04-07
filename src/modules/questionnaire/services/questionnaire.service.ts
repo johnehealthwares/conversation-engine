@@ -71,9 +71,29 @@ export class QuestionnaireService {
   }
 
   async update(id: string, dto: UpdateQuestionnaireDto): Promise<QuestionnaireDomain> {
+    return this.patch(id, dto);
+  }
+
+  async replace(id: string, dto: UpdateQuestionnaireDto): Promise<QuestionnaireDomain> {
     const updated = await this.model.findByIdAndUpdate(
       id,
-      { $set: dto },
+      dto,
+      { new: true },
+    ).lean();
+
+    if (!updated)
+      throw new NotFoundException('Questionnaire not found');
+
+    return this.mapToDomain(updated as any);
+  }
+
+  async patch(id: string, dto: UpdateQuestionnaireDto): Promise<QuestionnaireDomain> {
+    const payload = Object.fromEntries(
+      Object.entries(dto).filter(([, value]) => value !== undefined),
+    );
+    const updated = await this.model.findByIdAndUpdate(
+      id,
+      { $set: payload },
       { new: true },
     ).lean();
 

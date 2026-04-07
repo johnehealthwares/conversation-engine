@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseInterceptors,
@@ -55,9 +56,14 @@ export class ChannelController {
     return this.channelService.findOne(id);
   }
 
+  @Put(':id')
+  replace(@Param('id') id: string, @Body() dto: UpdateChannelDto) {
+    return this.channelService.replace(id, dto);
+  }
+
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateChannelDto) {
-    return this.channelService.update(id, dto);
+  patch(@Param('id') id: string, @Body() dto: UpdateChannelDto) {
+    return this.channelService.patch(id, dto);
   }
 
   @Delete(':id')

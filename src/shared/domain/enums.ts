@@ -50,6 +50,8 @@ export enum ConversationState {
   WAITING_FOR_DELIVERY = 'WAITING_FOR_DELIVERY',
   WAITING_FOR_USER = 'WAITING_FOR_USER',
   COMPLETED = 'COMPLETED',
+  INCOMPLETE = 'INCOMPLETE',
+  ERROR = 'ERROR'
 }
 
 export enum ChannelType {

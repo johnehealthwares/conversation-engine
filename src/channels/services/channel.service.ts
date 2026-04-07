@@ -79,13 +79,38 @@ export class ChannelService {
   }
 
   async update(id: string, dto: UpdateChannelDto): Promise<ChannelDomain> {
-    this.logger.log(`[channel:update] Updating channel ${id}`);
+    return this.patch(id, dto);
+  }
+
+  async replace(id: string, dto: UpdateChannelDto): Promise<ChannelDomain> {
+    this.logger.log(`[channel:replace] Updating channel ${id}`);
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('Channel not found');
     }
 
     const updated = await this.channelModel
-      .findByIdAndUpdate(new Types.ObjectId(id), { $set: dto }, { new: true })
+      .findByIdAndUpdate(new Types.ObjectId(id), dto, { new: true })
+      .lean();
+
+    if (!updated) {
+      throw new NotFoundException('Channel not found');
+    }
+
+    return toDomain(updated);
+  }
+
+  async patch(id: string, dto: UpdateChannelDto): Promise<ChannelDomain> {
+    this.logger.log(`[channel:update] Updating channel ${id}`);
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('Channel not found');
+    }
+
+    const payload = Object.fromEntries(
+      Object.entries(dto).filter(([, value]) => value !== undefined),
+    );
+
+    const updated = await this.channelModel
+      .findByIdAndUpdate(new Types.ObjectId(id), { $set: payload }, { new: true })
       .lean();
 
     if (!updated) {

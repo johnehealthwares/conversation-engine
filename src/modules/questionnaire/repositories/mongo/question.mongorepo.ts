@@ -4,7 +4,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { Question, QuestionDocument } from "../../schemas/question.schema";
 import { InjectModel } from "@nestjs/mongoose";
 import { QuestionRepository } from "../question.repository";
-import { Model, Types } from "mongoose";
+import { isValidObjectId, Model, Types } from "mongoose";
 import { FilterQuestionDto } from "../../controllers/dto/filter-question.dto";
 import { QuestionDomain } from "../../../../shared/domain";
 import { OptionList } from "../../schemas/option-list.schema";
@@ -64,7 +64,7 @@ export class QuestionMongoRepository implements QuestionRepository {
     const $set: any = {};
     Object.keys(data).forEach((key) => {
       const value = data[key as keyof typeof data];
-      if (value !== undefined) $set[key] = value;
+      if (value !== undefined) $set[key] = isValidObjectId(value) ? new Types.ObjectId(value as string) : value;
     });
     console.log({$set, id})
     const question = await this.model.findByIdAndUpdate(new Types.ObjectId(id), {...$set}, {new: true}).exec();

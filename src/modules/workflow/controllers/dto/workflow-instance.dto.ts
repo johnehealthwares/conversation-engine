@@ -1,11 +1,17 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsIn, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateWorkflowInstanceDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   workflowId: string;
+
+  @ApiPropertyOptional({ default: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  workflowVersion?: number;
 
   @ApiProperty()
   @IsString()
@@ -16,6 +22,11 @@ export class CreateWorkflowInstanceDto {
   @IsOptional()
   @IsObject()
   state?: Record<string, any>;
+
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  @IsObject()
+  config?: Record<string, any>;
 
   @ApiProperty({ enum: ['ACTIVE', 'COMPLETED', 'STOPPED'], default: 'ACTIVE' })
   @IsIn(['ACTIVE', 'COMPLETED', 'STOPPED'])
@@ -28,4 +39,3 @@ export class CreateWorkflowInstanceDto {
 }
 
 export class UpdateWorkflowInstanceDto extends PartialType(CreateWorkflowInstanceDto) {}
-

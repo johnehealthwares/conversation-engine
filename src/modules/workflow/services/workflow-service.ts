@@ -14,7 +14,11 @@ export class WorkflowService {
   ) {}
 
   async create(data: Partial<Workflow>): Promise<WorkflowDomain> {
-    const workflow = new this.workflowModel(data);
+    const workflow = new this.workflowModel({
+      version: 1,
+      maxTransitionsPerRun: 25,
+      ...data,
+    });
     return workflow.save();
   }
 
@@ -31,7 +35,7 @@ export class WorkflowService {
     return wf;
   }
 
-  async findAll(filter: FilterWorkflowDto = {}): Promise<Workflow[]> {
+  async findAll(filter: FilterWorkflowDto = {}): Promise<WorkflowDomain[]> {
     const query: Record<string, any> = {};
 
     if (filter.code) query.code = filter.code;
@@ -41,14 +45,33 @@ export class WorkflowService {
       const regex = new RegExp(filter.search.trim(), 'i');
       query.$or = [{ name: regex }, { code: regex }];
     }
-
-    return this.workflowModel.find(query).exec();
+    const schemas = await this.workflowModel.find(query).exec();
+    console.log({schemas})
+    return schemas.map(toDomain);
   }
 
-  async update(id: string, data: Partial<Workflow>): Promise<Workflow> {
+  async update(id: string, data: Partial<Workflow>): Promise<WorkflowDomain> {
+    const schema =this.patch(id, data);
+    return  toDomain(schema);
+  }
+
+  async replace(id: string, data: Partial<Workflow>): Promise<WorkflowDomain> {
     const wf = await this.workflowModel.findOneAndUpdate(
       { _id: new Types.ObjectId(id) },
       data,
+      { returnDocument: 'after' },
+    );
+    if (!wf) throw new NotFoundException('Workflow not found');
+    return wf;
+  }
+
+  async patch(id: string, data: Partial<Workflow>): Promise<Workflow> {
+    const payload = Object.fromEntries(
+      Object.entries(data).filter(([, value]) => value !== undefined),
+    );
+    const wf = await this.workflowModel.findOneAndUpdate(
+      { _id: new Types.ObjectId(id) },
+      payload,
       { returnDocument: 'after' },
     );
     if (!wf) throw new NotFoundException('Workflow not found');

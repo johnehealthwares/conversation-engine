@@ -4,6 +4,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Put,
   Delete,
   Body,
@@ -41,9 +42,15 @@ export class QuestionController {
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update Question' })
-  update(@Param('id') id: string, @Body() dto: any) {
-    return this.service.update(id, dto);
+  @ApiOperation({ summary: 'Replace Question' })
+  replace(@Param('id') id: string, @Body() dto: any) {
+    return this.service.replace(id, dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Patch Question' })
+  patch(@Param('id') id: string, @Body() dto: any) {
+    return this.service.patch(id, dto);
   }
 
   @Delete(':id')

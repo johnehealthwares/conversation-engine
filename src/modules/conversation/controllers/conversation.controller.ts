@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -15,6 +16,7 @@ import {
   UpdateConversationDto,
 } from './dto/create-conversation.dto';
 import { FilterConversationDto } from './dto/filter-conversation.dto';
+import { ProcessConversationResponseDto } from './dto/process-conversation-response.dto';
 
 @ApiTags('Conversations')
 @Controller('conversations')
@@ -39,10 +41,25 @@ export class ConversationController {
     return this.conversationService.findOne(id);
   }
 
+  @Put(':id')
+  @ApiOperation({ summary: 'Replace conversation' })
+  replace(@Param('id') id: string, @Body() dto: UpdateConversationDto) {
+    return this.conversationService.replaceConversationRecord(id, dto);
+  }
+
   @Patch(':id')
-  @ApiOperation({ summary: 'Update conversation' })
-  update(@Param('id') id: string, @Body() dto: UpdateConversationDto) {
-    return this.conversationService.updateConversationRecord(id, dto);
+  @ApiOperation({ summary: 'Patch conversation' })
+  patch(@Param('id') id: string, @Body() dto: UpdateConversationDto) {
+    return this.conversationService.patchConversationRecord(id, dto);
+  }
+
+  @Post(':id/process-response')
+  @ApiOperation({ summary: 'Process an answer for the current conversation question' })
+  processResponse(
+    @Param('id') id: string,
+    @Body() dto: ProcessConversationResponseDto,
+  ) {
+    return this.conversationService.processResponse(id, dto);
   }
 
   @Delete(':id')
