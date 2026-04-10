@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { QuestionDomain, QuestionnaireDomain, WorkflowDomain } from 'src/shared/domain';
 import { WorkflowQuestionStepMapping } from '../entities/workflow-attachment';
-import { WorkflowResponseMappingEntry, WorkflowStep } from '../entities/workflow-step';
+import { WorkflowDataMappingEntry, WorkflowStep } from '../entities/workflow-step';
 
 type ValidationLevel = 'error' | 'warning' | 'success';
 
@@ -204,7 +204,7 @@ export class WorkflowAttachmentValidationService {
         continue;
       }
 
-      const typedMapping = mapping as WorkflowResponseMappingEntry & {
+      const typedMapping = mapping as WorkflowDataMappingEntry & {
         path?: string;
         validation?: Record<string, any>;
         dependencies?: string[];
@@ -276,7 +276,7 @@ export class WorkflowAttachmentValidationService {
 
     this.extractConditionAttributes(step, refs);
     this.extractTemplateAttributes(step.config, refs);
-    this.extractResponseMappingDependencies(step, refs);
+    this.extractResultMappingDependencies(step, refs);
 
     return Array.from(refs);
   }
@@ -313,8 +313,8 @@ export class WorkflowAttachmentValidationService {
     }
   }
 
-  private extractResponseMappingDependencies(step: WorkflowStep, refs: Set<string>) {
-    Object.values(step.config?.responseMapping ?? {}).forEach((mapping) => {
+  private extractResultMappingDependencies(step: WorkflowStep, refs: Set<string>) {
+    Object.values(step.config?.resultMapping ?? {}).forEach((mapping) => {
       if (typeof mapping === 'string') {
         return;
       }

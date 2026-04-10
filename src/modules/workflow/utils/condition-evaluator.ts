@@ -2,7 +2,7 @@ export function evaluateCondition(condition: string, payload: any): boolean {
   try {
     const fn = new Function(
       'payload',
-      `return ${condition};`,
+      `with (payload ?? {}) { return (${condition}); }`,
     );
     return fn(payload);
   } catch (e) {

@@ -19,6 +19,8 @@ export class Conversation {
   questionnaireId: Types.ObjectId
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: Question.name, required: true })
   currentQuestionId: Types.ObjectId
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: WorkflowInstance.name })
+  workflowInstanceId?: Types.ObjectId
 
   @Prop({ type: String,
     required: true,

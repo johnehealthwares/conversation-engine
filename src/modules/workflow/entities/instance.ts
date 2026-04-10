@@ -1,12 +1,13 @@
 // schemas/workflow-instance.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Schema as MongooseSchema, Document, Types } from 'mongoose';
+import { Workflow } from './workflow';
 
 @Schema({ timestamps: true })
 export class WorkflowInstance {
   @Prop({ type: Types.ObjectId })
-  _id: Types.ObjectId
-  @Prop({ required: true })
+  _id: MongooseSchema.Types.ObjectId
+  @Prop({ required: true, type: MongooseSchema.Types.ObjectId, ref: Workflow.name })
   workflowId: string;
 
   @Prop({ required: true, default: 1 })

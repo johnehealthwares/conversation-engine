@@ -1,16 +1,16 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { WorkflowService } from './workflow-service';
 import { WorkflowInstanceService } from './workflow-instance';
-import { EventBusService } from './event-bus.service';
+import { EventBusService } from 'src/shared/events';
 import { ActionLog } from '../entities/action-log';
 import { createActionHandlers } from '../handlers';
 import type { ActionResult } from '../handlers/http-post.handler';
 import type { IWorkflowEvent } from '../interfaces/event.interface';
 import { WorkflowHistoryService } from './workflow-history.service';
-import { WorkflowResponseMappingValidation, WorkflowStep } from '../entities/workflow-step';
+import { WorkflowDataMappingValidation, WorkflowStep } from '../entities/workflow-step';
 import { WorkflowEventType } from '../entities/step-transition';
+import { WorkflowInstance } from 'src/shared/domain/workflow-instance.domain';
 
 @Injectable()
 export class StepRunnerService {
@@ -18,88 +18,67 @@ export class StepRunnerService {
   private readonly actionHandlers = createActionHandlers();
 
   constructor(
-    private readonly workflowService: WorkflowService,
-    private readonly workflowInstanceService: WorkflowInstanceService,
     private readonly eventBusService: EventBusService,
     @InjectModel(ActionLog.name)
     private readonly actionLogRepository: Model<ActionLog>,
+    private readonly workflowInstanceService: WorkflowInstanceService,
     private readonly workflowHistoryService: WorkflowHistoryService,
   ) {}
 
   async runStep(
-    workflowId: string,
-    stepId: string,
-    workflowInstanceId: string,
-    triggerEvent?: IWorkflowEvent,
+    triggerEvent: IWorkflowEvent,
+    step: WorkflowStep,
+    workflowInstance: WorkflowInstance,
   ) {
-    this.logger.log(`Running step ${stepId} for workflow ${workflowId}`);
-
-    const workflow = await this.workflowService.findById(workflowId);
-    if (!workflow) {
-      throw new NotFoundException('Workflow not found');
-    }
-
-    const workflowInstance = await this.workflowInstanceService.findById(workflowInstanceId);
-    const step = workflow.steps.find((item) => item.id === stepId);
-
-    if (!step) {
-      throw new NotFoundException(`Workflow step not found: ${stepId}`);
-    }
+    this.logger.log(
+      `Running step ${step.id} (type=${step.type}) for instance ${workflowInstance.id}`,
+    );
 
     const state = workflowInstance.state || {};
-    const config = workflowInstance.config || {};
+    this.logger.debug(`State snapshot: ${JSON.stringify(state)}`);
 
     if (step.type === 'END') {
+      this.logger.log(`Workflow ${workflowInstance.id} reached END step ${step.id}`);
+
       await this.workflowHistoryService.record(
         workflowInstance.id,
         step.id,
         'WORKFLOW_COMPLETED',
       );
+
       await this.workflowInstanceService.update(workflowInstance.id, {
         status: 'COMPLETED',
       });
+
       return;
     }
 
     if (step.type !== 'ACTION') {
+      this.logger.log(`Entering non-action step ${step.type} (${step.id})`);
+
       await this.workflowHistoryService.record(
         workflowInstance.id,
         step.id,
         `STEP_ENTERED:${step.type}`,
       );
+
       return;
     }
 
-    await this.executeAction(
-      step,
-      workflowInstance.id,
-      state,
-      config,
-      workflowId,
-      triggerEvent,
-    );
+    await this.executeAction(triggerEvent, step, workflowInstance);
   }
 
   private getHandler(action: string) {
+    this.logger.debug(`Resolving handler for action: ${action}`);
+
     const handler = this.actionHandlers[action as keyof typeof this.actionHandlers];
+
     if (!handler) {
+      this.logger.error(`Handler not found for action: ${action}`);
       throw new NotFoundException(`Action handler not found: ${action}`);
     }
+
     return handler;
-  }
-
-  private getValueByPath(obj: any, path: string) {
-    return path.split('.').reduce((acc, part) => acc?.[part], obj);
-  }
-
-  private resolveTemplate(template: string, context: Record<string, any>): string {
-    return template.replace(/\{\{\s*([^}]+)\s*\}\}/g, (_match, rawPath) => {
-      const value = rawPath
-        .trim()
-        .split('.')
-        .reduce((acc, key) => acc?.[key], context);
-      return value === undefined || value === null ? '' : String(value);
-    });
   }
 
   private resolveConfigValue(value: any, state: Record<string, any>): any {
@@ -123,15 +102,40 @@ export class StepRunnerService {
     return value;
   }
 
+  private resolveTemplate(template: string, context: Record<string, any>): string {
+    return template.replace(/\{\{\s*([^}]+)\s*\}\}/g, (_match, rawPath) => {
+      const value = rawPath
+        .trim()
+        .split('.')
+        .reduce((acc, key) => acc?.[key], context);
+
+      return value === undefined || value === null ? '' : String(value);
+    });
+  }
+
   private extractMappedFields(mapping: Record<string, any>, source: any) {
+    this.logger.debug(`Extracting mapped fields`);
+
     const result: Record<string, any> = {};
 
     for (const key in mapping) {
       const map = mapping[key];
 
-      if (typeof map === 'object' && map) {
-        let value = this.getValueByPath(source, map.path);
-        if (value === undefined && typeof map.path === 'string' && map.path.startsWith('data.')) {
+      const isMappingEntry =
+        typeof map === 'object' &&
+        map != null &&
+        ['path', 'default', 'transform', 'validation', '$regex', '$options'].some(
+          (property) => property in map,
+        );
+
+      if (typeof map === 'object' && map && !isMappingEntry && !Array.isArray(map)) {
+        result[key] = this.extractMappedFields(map, source);
+      } else if (typeof map === 'object' && map) {
+        this.logger.debug(`Mapping field "${key}" from path "${map.path}"`);
+
+        let value = map.path ? this.getValueByPath(source, map.path) : undefined;
+
+        if (value === undefined && map.path?.startsWith('data.')) {
           value = this.getValueByPath(source, map.path.replace(/^data\./, ''));
         }
 
@@ -142,42 +146,38 @@ export class StepRunnerService {
         if (map.transform === 'number') value = Number(value);
         if (map.transform === 'string' && value != null) value = String(value);
         if (map.transform === 'boolean') value = Boolean(value);
-        this.validateMappedValue(key, value, map.validation);
 
+        this.validateMappedValue(key, value, map.validation);
         result[key] = value;
       } else if (typeof map === 'string') {
         result[key] = this.getValueByPath(source, map);
       }
     }
 
+    this.logger.debug(`Extracted fields: ${JSON.stringify(result)}`);
     return result;
   }
 
   private validateMappedValue(
     field: string,
     value: any,
-    validation?: WorkflowResponseMappingValidation,
+    validation?: WorkflowDataMappingValidation,
   ) {
-    if (!validation) {
-      return;
-    }
+    if (!validation) return;
 
     if (validation.required && (value === undefined || value === null || value === '')) {
+      this.logger.error(`Validation failed: "${field}" is required`);
       throw new Error(`Response mapping "${field}" is required`);
     }
 
-    if (
-      validation.type &&
-      value != null &&
-      !this.matchesType(value, validation.type)
-    ) {
-      throw new Error(
-        `Response mapping "${field}" must be of type ${validation.type}`,
-      );
+    if (validation.type && value != null && !this.matchesType(value, validation.type)) {
+      this.logger.error(`Validation failed: "${field}" must be ${validation.type}`);
+      throw new Error(`Response mapping "${field}" must be of type ${validation.type}`);
     }
 
     if (validation.enum?.length && value != null && !validation.enum.includes(value)) {
-      throw new Error(`Response mapping "${field}" must match one of the allowed values`);
+      this.logger.error(`Validation failed: "${field}" not in enum`);
+      throw new Error(`Response mapping "${field}" must match allowed values`);
     }
 
     if (typeof value === 'number' && validation.min != null && value < validation.min) {
@@ -193,239 +193,226 @@ export class StepRunnerService {
       typeof value === 'string' &&
       !new RegExp(validation.pattern).test(value)
     ) {
-      throw new Error(`Response mapping "${field}" does not match the expected pattern`);
+      throw new Error(`Response mapping "${field}" pattern mismatch`);
     }
   }
 
-  private matchesType(value: any, type: NonNullable<WorkflowResponseMappingValidation['type']>) {
+  private matchesType(value: any, type: any) {
     if (type === 'array') return Array.isArray(value);
-    if (type === 'object') return value != null && typeof value === 'object' && !Array.isArray(value);
+    if (type === 'object') return value && typeof value === 'object' && !Array.isArray(value);
     return typeof value === type;
   }
 
-  private async persistActionResult(
-    instanceId: string,
-    stepId: string,
-    result: ActionResult,
-    triggerEvent: IWorkflowEvent | undefined,
-    input: Record<string, any>,
-    durationMs: number,
-  ) {
-    await this.actionLogRepository.create({
-      workflowInstanceId: instanceId,
-      stepId,
-      eventId: triggerEvent?.id,
-      correlationId: triggerEvent?.context?.correlationId,
-      success: result.success,
-      durationMs,
-      input,
-      output: result.data,
-      error: result.error,
-      metadata: result.metadata,
-      executedAt: new Date(),
-    });
-  }
-
-  private classifyError(result: ActionResult) {
-    const status = Number(result.metadata?.status);
-    const errorMessage = (result.error ?? '').toLowerCase();
-    const retryable =
-      !status ||
-      status >= 500 ||
-      status === 408 ||
-      status === 429 ||
-      errorMessage.includes('timeout') ||
-      errorMessage.includes('network') ||
-      errorMessage.includes('temporarily');
-
-    return {
-      retryable,
-      errorType: retryable ? 'RETRYABLE' : 'FATAL',
-    } as const;
-  }
-
-  private getRetryDelayMs(
-    attempt: number,
-    strategy: string,
-    baseDelayMs = 250,
-  ) {
-    switch (strategy) {
-      case 'exponential':
-        return baseDelayMs * 2 ** (attempt - 1);
-      case 'linear':
-        return baseDelayMs * attempt;
-      case 'fixed':
-      default:
-        return baseDelayMs;
-    }
-  }
-
-  private async wait(delayMs: number) {
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-  }
-
-  private withTimeout<T>(promise: Promise<T>, timeoutMs?: number) {
-    if (!timeoutMs || timeoutMs <= 0) {
-      return promise;
-    }
-
-    return Promise.race<T>([
-      promise,
-      new Promise<T>((_, reject) => {
-        setTimeout(() => reject(new Error(`Action timed out after ${timeoutMs}ms`)), timeoutMs);
-      }),
-    ]);
-  }
-
-  private async executeActionWithRetry(
-    handler: (config: Record<string, any>, state: Record<string, any>) => Promise<ActionResult>,
-    resolvedConfig: Record<string, any>,
-    state: Record<string, any>,
-  ) {
-    const retries = Math.max(0, Number(resolvedConfig.retries ?? 0));
-    const retryStrategy = String(resolvedConfig.retryStrategy ?? 'fixed');
-    const timeoutMs =
-      Number.isFinite(Number(resolvedConfig.timeoutMs)) && Number(resolvedConfig.timeoutMs) > 0
-        ? Number(resolvedConfig.timeoutMs)
-        : undefined;
-
-    let lastResult: ActionResult | null = null;
-
-    for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
-      try {
-        const currentResult = await this.withTimeout(
-          handler(resolvedConfig, state),
-          timeoutMs,
-        );
-        const classification = this.classifyError(currentResult);
-        lastResult = {
-          ...currentResult,
-          metadata: {
-            ...(currentResult.metadata ?? {}),
-            attempts: attempt,
-            retryable: classification.retryable,
-            errorType: classification.errorType,
-          },
-        };
-
-        if (currentResult.success || !classification.retryable || attempt > retries) {
-          return lastResult;
-        }
-      } catch (error: any) {
-        const errorResult: ActionResult = {
-          success: false,
-          error: error?.message ?? 'Unknown action error',
-          metadata: {
-            attempts: attempt,
-          },
-        };
-        const classification = this.classifyError(errorResult);
-        lastResult = {
-          ...errorResult,
-          metadata: {
-            ...(errorResult.metadata ?? {}),
-            retryable: classification.retryable,
-            errorType: classification.errorType,
-          },
-        };
-
-        if (!classification.retryable || attempt > retries) {
-          return lastResult;
-        }
-      }
-
-      await this.wait(this.getRetryDelayMs(attempt, retryStrategy));
-    }
-
-    return (
-      lastResult ?? {
-        success: false,
-        error: 'Action failed without result',
-        metadata: {
-          retryable: false,
-          errorType: 'FATAL',
-          attempts: retries + 1,
-        },
-      }
-    );
-  }
-
   private async executeAction(
+    triggerEvent: IWorkflowEvent,
     step: WorkflowStep,
-    instanceId: string,
-    state: Record<string, any>,
-    workflowConfig: Record<string, any>,
-    workflowId: string,
-    triggerEvent?: IWorkflowEvent,
+    instance: WorkflowInstance,
   ) {
-    const mergedConfig = {
-      ...workflowConfig,
-      ...(step.config || {}),
-    };
-    const resolvedConfig = this.resolveConfigValue(mergedConfig, state);
+    const mergedConfig = { ...instance.config, ...(step.config || {}) };
+    const resolvedConfig = this.resolveConfigValue(mergedConfig, instance.state);
+
+    this.logger.log(
+      `Executing action "${resolvedConfig.action}" for step ${step.id}`,
+    );
+
     const handler = this.getHandler(resolvedConfig.action);
     const startedAt = Date.now();
-    const result = await this.executeActionWithRetry(handler, resolvedConfig, state);
+
+    const result = await this.executeActionWithRetry(
+      handler,
+      resolvedConfig,
+      instance.state,
+    );
+
     const durationMs = Date.now() - startedAt;
 
-    let extracted = {};
+    this.logger.log(
+      `Action completed (success=${result.success}, duration=${durationMs}ms)`,
+    );
 
-    if (step.config?.responseMapping) {
-      extracted = this.extractMappedFields(step.config.responseMapping, result.data);
-    } else if (result.data) {
+    let extracted = {};
+    if (step.config?.responseBodyMapping) {
+      extracted = this.extractMappedFields(step.config.responseBodyMapping, result.data);
+    } else if (result.data && typeof result.data === 'object') {
       extracted = result.data;
     }
 
-    const defaultValues = step.config?.defaultValues ?? {};
+    this.logger.debug(`Extracted data: ${JSON.stringify(extracted)}`);
 
-    await this.persistActionResult(
-      instanceId,
-      step.id,
-      result,
-      triggerEvent,
-      resolvedConfig,
-      durationMs,
-    );
-
-    const updatedState = {
-      ...state,
-      ...defaultValues,
-      ...extracted,
-      lastAction: {
-        stepId: step.id,
-        success: result.success,
-        errorType: result.metadata?.errorType,
-        attempts: result.metadata?.attempts,
-      },
+    const lastAction = {
+      stepId: step.id,
+      data: extracted,
+      success: result.success,
+      errorType: result.metadata?.errorType,
+      attempts: result.metadata?.attempts,
     };
 
-    await this.workflowInstanceService.update(instanceId, {
+    const updatedStepState = {
+      data: extracted,
+      result: null as Record<string, any> | null,
+      success: result.success,
+      errorType: result.metadata?.errorType,
+      attempts: result.metadata?.attempts,
+      actions:
+        instance.state?.lastAction?.stepId !== step.id
+          ? [lastAction]
+          : [...(instance.state?.[step.id]?.actions || []), lastAction],
+    };
+
+    const updatedState = {
+      ...instance.state,
+      ...step.config?.defaultValues,
+      [step.id]: updatedStepState,
+      lastAction,
+    };
+
+    const eventPayload = step.config?.resultMapping
+      ? this.extractMappedFields(step.config.resultMapping, {
+          ...updatedState,
+          response: result.data,
+          step: updatedStepState,
+          trigger: triggerEvent.payload,
+          context: triggerEvent.context,
+          metadata: result.metadata,
+        })
+      : extracted;
+
+    updatedState[step.id] = {
+      ...updatedStepState,
+      result: eventPayload,
+    };
+
+    this.logger.debug(`Updating state for instance ${instance.id}`);
+
+    await this.workflowInstanceService.update(instance.id, {
       state: updatedState,
       config: result.updatedConfig ?? resolvedConfig,
     });
 
     await this.workflowHistoryService.record(
-      instanceId,
+      instance.id,
       step.id,
-      result.success ? WorkflowEventType.ACTION_COMPLETED : WorkflowEventType.ACTION_FAILED,
+      result.success
+        ? WorkflowEventType.ACTION_COMPLETED
+        : WorkflowEventType.ACTION_FAILED,
     );
 
-    const eventType =
-      result.nextEvent ||
-      (result.success ? WorkflowEventType.ACTION_COMPLETED : WorkflowEventType.ACTION_FAILED);
+    const lifecycleEvent = result.success
+      ? WorkflowEventType.ACTION_COMPLETED
+      : WorkflowEventType.ACTION_FAILED;
+    const primaryEvent = result.nextEvent || lifecycleEvent;
+    const eventMeta = {
+      source: 'step-runner',
+      sequence: Number(triggerEvent?.meta?.sequence ?? 0) + 1,
+    };
 
-    this.eventBusService.emit(
-      eventType,
-      extracted || {},
+    this.logger.log(`Emitting event ${primaryEvent}`);
+
+    await this.eventBusService.emit(
+      primaryEvent,
+      eventPayload || {},
       {
-        workflowInstanceId: instanceId,
-        workflowId,
+        workflowInstanceId: instance.id,
+        flowId: instance.flowId,
+        conversationId: instance.flowId,
         stepId: step.id,
         correlationId: triggerEvent?.context?.correlationId,
       },
-      {
-        source: 'step-runner',
-      },
+      eventMeta,
     );
+
+    if (primaryEvent !== lifecycleEvent) {
+      this.logger.log(`Emitting lifecycle event ${lifecycleEvent}`);
+      await this.eventBusService.emit(
+        lifecycleEvent,
+        eventPayload || {},
+        {
+          workflowInstanceId: instance.id,
+          flowId: instance.flowId,
+          conversationId: instance.flowId,
+          stepId: step.id,
+          correlationId: triggerEvent?.context?.correlationId,
+        },
+        eventMeta,
+      );
+    }
+  }
+
+  private async executeActionWithRetry(
+    handler: any,
+    resolvedConfig: Record<string, any>,
+    state: Record<string, any>,
+  ) {
+    const retries = Math.max(0, Number(resolvedConfig.retries ?? 0));
+    const retryStrategy = String(resolvedConfig.retryStrategy ?? 'fixed');
+
+    let lastResult: ActionResult | null = null;
+
+    for (let attempt = 1; attempt <= retries + 1; attempt++) {
+      this.logger.log(`Attempt ${attempt}/${retries + 1}`);
+
+      try {
+        const result = await handler(resolvedConfig, state);
+        lastResult = result;
+
+        if (result.success) {
+          this.logger.log(`Action succeeded on attempt ${attempt}`);
+          return result;
+        }
+
+        this.logger.warn(`Attempt ${attempt} failed: ${result.error}`);
+        if (result.nextEvent && attempt === retries + 1) {
+          return {
+            ...result,
+            metadata: {
+              ...(result.metadata || {}),
+              attempts: attempt,
+            },
+          };
+        }
+      } catch (error: any) {
+        this.logger.warn(`Attempt ${attempt} threw error: ${error?.message}`);
+        lastResult = {
+          success: false,
+          error: error?.message,
+          metadata: {
+            errorType: error.name,
+          },
+        };
+      }
+
+      if (attempt <= retries) {
+        const delay = this.getRetryDelayMs(attempt, retryStrategy);
+        this.logger.debug(`Retrying in ${delay}ms`);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+
+    this.logger.error(`Action failed after all retries`);
+    return {
+      ...(lastResult || { success: false, error: 'Unknown action failure' }),
+      metadata: {
+        ...(lastResult?.metadata || {}),
+        attempts: retries + 1,
+      },
+    };
+  }
+
+  private getRetryDelayMs(attempt: number, strategy: string, base = 250) {
+    switch (strategy) {
+      case 'exponential':
+        return base * 2 ** (attempt - 1);
+      case 'linear':
+        return base * attempt;
+      default:
+        return base;
+    }
+  }
+
+  private getValueByPath(obj: any, path: string) {
+    if (!path) {
+      return obj;
+    }
+    return path.split('.').reduce((acc, part) => acc?.[part], obj);
   }
 }

@@ -5,9 +5,9 @@ export interface WorkflowEventPayload {
 }
 
 export interface WorkflowEventContext {
-  workflowId?: string;
-  workflowInstanceId?: string;
+  workflowInstanceId: string;
   flowId?: string;
+  conversationId?: string;
   stepId?: string;
   correlationId?: string;
   userId?: string;
@@ -17,7 +17,7 @@ export interface WorkflowEventContext {
 
 export interface IWorkflowEvent {
   id: string;
-  type: WorkflowEventType;
+  type: WorkflowEventType | string;
   payload: WorkflowEventPayload;
   context: WorkflowEventContext;
   meta: {

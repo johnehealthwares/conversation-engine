@@ -9,6 +9,7 @@ import {
 import { AIProcessorService } from './ai-processor.service';
 import { ApiProcessorFacade } from './api-processor';
 import { OptionResolver } from './option-resolver';
+import { Types } from 'mongoose';
 
 /* -------------------- TYPES -------------------- */
 
@@ -22,6 +23,8 @@ export enum ProcessAnswerStatus {
   QUESTIONNAIRE_NOT_FOUND = 'QUESTIONNAIRE_NOT_FOUND',
   QUESTIONNAIRE_CODE_NOT_PROVIDED = 'QUESTIONNAIRE_CODE_NOT_PROVIDED',
   CONVERSATION_NOT_FOUND_FOR_SOME_REASON = 'CONVERSATION_NOT_FOUND_FOR_SOME_REASON',
+  WORKFLOW_HANDLING = 'WORKFLOW_HANDLING',
+  AI_HANDLING = 'AI_HANDLING',
 }
 
 export type ProcessAnswerResult =
@@ -34,13 +37,25 @@ export type ProcessAnswerResult =
     status: ProcessAnswerStatus.NEXT_QUESTION;
     nextQuestion: QuestionDomain;
     processedAnswer: unknown;
-    aiMetadata?: Record<string, any>;
+    metadata?: Record<string, any>;
   }
   | {
     status: ProcessAnswerStatus.COMPLETED;
     processedAnswer: unknown;
-    aiMetadata?: Record<string, any>;
+    metadata?: Record<string, any>;
+  }
+  | {
+    status: ProcessAnswerStatus.WORKFLOW_HANDLING;
+    value: string;
+    metadata?: Record<string, any>;
+  } | {
+    status: ProcessAnswerStatus.CONVERSATION_NOT_FOUND;
+    processedAnswer: unknown;
+    message: string;
+    nextQuestion?: QuestionDomain;
+    metadata?: Record<string, any>;
   };
+
 
 /* -------------------- SERVICE -------------------- */
 
@@ -82,6 +97,7 @@ export class QuestionProcessorService {
 
     // ✅ 1. VALIDATION
     const validationMessage = await this.validateAnswer(question, message);
+
     if (validationMessage) {
       return {
         value: message.trim(),
@@ -97,13 +113,10 @@ export class QuestionProcessorService {
       message,
     );
 
-    if (modeResult.validationMessage) {
-      return {
-        value: message.trim(),
-        status: ProcessAnswerStatus.VALIDATION_ERROR,
-        message: modeResult.validationMessage,
-      };
+    if (modeResult.status === ProcessAnswerStatus.VALIDATION_ERROR) {
+      return modeResult;
     }
+
 
     // ✅ 3. STORE METADATA (important for API flows)
     if (modeResult.metadata) {
@@ -114,26 +127,15 @@ export class QuestionProcessorService {
     }
 
     // ✅ 4. RESOLVE NEXT QUESTION
-    const nextQuestion = this.resolveNextQuestion(
-      conversation,
-      question,
-      modeResult.nextQuestionId,
-    );
-
-    if (!nextQuestion) {
-      return {
-        status: ProcessAnswerStatus.COMPLETED,
-        processedAnswer: modeResult.processedAnswer,
-        aiMetadata: modeResult.aiMetadata,
-      };
+    if (modeResult.status === ProcessAnswerStatus.NEXT_QUESTION) {
+      this.resolveNextQuestion(
+        conversation,
+        question
+      );
     }
 
-    return {
-      status: ProcessAnswerStatus.NEXT_QUESTION,
-      nextQuestion,
-      processedAnswer: modeResult.processedAnswer,
-      aiMetadata: modeResult.aiMetadata,
-    };
+
+    return modeResult;
   }
 
   /* -------------------- VALIDATION -------------------- */
@@ -222,6 +224,14 @@ export class QuestionProcessorService {
         return opts.includes(v?.toLowerCase())
           ? ''
           : 'Select a valid option';
+      case QuestionType.OBJECT_ID:
+        return Types.ObjectId.isValid(v)
+          ? ''
+          : 'Provide a valid object id';
+      case QuestionType.UUID:
+        return /^[0-9a-fA-F]/.test(v)
+          ? ''
+          : 'Provide a valid uuid';
 
       default:
         return '';
@@ -236,13 +246,7 @@ export class QuestionProcessorService {
     conversation: ConversationDomain,
     question: QuestionDomain,
     message: string,
-  ): Promise<{
-    processedAnswer: unknown;
-    nextQuestionId?: string;
-    metadata?: Record<string, any>;
-    aiMetadata?: Record<string, any>;
-    validationMessage?: string;
-  }> {
+  ): Promise<ProcessAnswerResult> {
 
     // ✅ OPTION MODE
     if (question.processMode === ProcessMode.OPTION_PROCESSED) {
@@ -254,14 +258,16 @@ export class QuestionProcessorService {
 
       if (!selected) {
         return {
-          processedAnswer: message,
-          validationMessage: 'Invalid option. ' + this.askQuestion(question),
+          status: ProcessAnswerStatus.VALIDATION_ERROR,
+          value: message,
+          message: 'Invalid option. ' + this.askQuestion(question),
         };
       }
 
       return {
-        processedAnswer: selected,
-        nextQuestionId: selected.jumpToQuestionId,
+        status: ProcessAnswerStatus.NEXT_QUESTION,
+        nextQuestion: this.resolveNextQuestion(conversation, question, selected.jumpToQuestionId)!,
+        processedAnswer: selected.value,
       };
     }
 
@@ -272,19 +278,33 @@ export class QuestionProcessorService {
         question.aiConfig as any,
       );
       return {
+        status: ProcessAnswerStatus.NEXT_QUESTION,
         processedAnswer: ai.structuredResult,
-        aiMetadata: { confidence: ai.confidence },
+        metadata: { confidence: ai.confidence },
+        nextQuestion: this.resolveNextQuestion(conversation, question)!,
       };
+    }
+
+    if (question.processMode === ProcessMode.WORKFLOW_PROCESSED) {
+      return {
+        status: ProcessAnswerStatus.WORKFLOW_HANDLING,
+        value: message,
+        metadata: {
+          workflow: {
+            triggerWorkflow: true,
+            currentQuestionId: question.id,
+            nextQuestionId: question.nextQuestionId,
+            query: message,
+          }
+        },
+      }
     }
 
     // ✅ DEFAULT PROCESSING
     const processedAnswer = message.trim();
 
     // 🚀 API NAVIGATION (delegated)
-    if (
-      question.processMode === ProcessMode.API_PROCESSED ||
-      question.apiNavigation
-    ) {
+    if ( question.processMode === ProcessMode.API_PROCESSED) {
       const apiResult = await this.apiProcessor.execute(
         question.apiNavigation!,
         message,
@@ -292,13 +312,30 @@ export class QuestionProcessorService {
       );
 
       return {
+        status: ProcessAnswerStatus.NEXT_QUESTION,
+        nextQuestion: this.resolveNextQuestion(conversation, question, apiResult.nextQuestionId)!,
         processedAnswer,
-        nextQuestionId: apiResult.nextQuestionId,
         metadata: apiResult.metadata,
       };
     }
 
-    return { processedAnswer };
+
+    const nextQuestion = this.resolveNextQuestion(conversation, question);
+
+    if (!nextQuestion) {
+      return {
+        status: ProcessAnswerStatus.COMPLETED,
+        processedAnswer,
+        metadata: {},
+      };
+    }
+
+    return {
+      status: ProcessAnswerStatus.NEXT_QUESTION,
+      nextQuestion,
+      processedAnswer,
+      metadata: {},
+    };
   }
 
   /* -------------------- NAVIGATION -------------------- */

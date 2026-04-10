@@ -10,9 +10,10 @@ type SeedResult = {
 };
 
 type SeedWorkflow = {
-  _id: Types.ObjectId  
+  _id: Types.ObjectId
   name: string;
   code: string;
+  startStepId?: string;
   metadata?: Record<string, any>;
   isActive: boolean;
   steps: Array<{
@@ -298,7 +299,212 @@ const sampleWorkflows = (): SeedWorkflow[] => [
   },
   {
     _id: new Types.ObjectId('680000000000000000000003'),
+    name: 'Workflow-driven Facility Lookup Questionnaire',
+    startStepId: 'customer_name',
+    code: 'WF_DYNAMIC_FACILITY_LOOKUP',
+    metadata: {
+      purpose: 'workflow-dynamic-options',
+      description:
+        'Authenticates on conversation start, fetches facilities for workflow-processed answers, and emits option lists back to the conversation module.',
+    },
+    isActive: true,
+    steps: [
+      {
+        id: 'customer_name',
+        type: 'QUESTIONNAIRE',
+        transitions: [
+          {
+            event: 'ANSWER_VALID',
+            nextStepId: 'facilityId',
+          },
+        ],
+      },
+      {
+        id: 'facilityId',
+        type: 'QUESTIONNAIRE',
+        transitions: [
+          {
+            event: 'WORKFLOW_ANSWER_RECEIVED',
+            nextStepId: 'authenticate_facility_lookup',
+          },
+        ],
+      },
+      {
+        id: 'authenticate_facility_lookup',
+        type: 'ACTION',
+        config: {
+          action: 'HTTP_POST',
+          url: '{{env.HS_BACKEND_BASE_URL}}/authentication',
+          payload: {
+            strategy: 'local',
+            email: '{{env.HS_BACKEND_USERNAME}}',
+            password: '{{env.HS_BACKEND_PASSWORD}}',
+          },
+          responseBodyMapping: {
+            accessToken: {
+              path: 'data.accessToken',
+              transform: 'string',
+              validation: {
+                required: true,
+                type: 'string',
+              },
+            },
+          },
+        },
+        transitions: [
+          {
+            event: 'ACTION_COMPLETED',
+            nextStepId: 'fetch_facilities',
+          },
+          {
+            event: 'ACTION_FAILED',
+            nextStepId: 'emit_no_facilities',
+          },
+        ],
+      },
+      {
+        id: 'fetch_facilities',
+        type: 'ACTION',
+        config: {
+          action: 'HTTP_GET',
+          url: '{{env.HS_BACKEND_BASE_URL}}/facility',
+          headersMapping: {
+            Authorization: {
+              path: 'authenticate_facility_lookup.data.accessToken',
+              transform: {
+                prepend: 'Bearer ',
+              },
+            },
+          },
+          queryMapping: {
+            'facilityName[$regex]': {
+              path: 'facilityId',
+            },
+            'facilityName[$options]': {
+              default: 'i',
+            },
+          },
+          responseBodyMapping: {
+            records: {
+              path: 'data',
+              validation: {
+                type: 'array',
+                required: true,
+              },
+            },
+            total: {
+              path: 'total',
+              transform: 'number',
+              default: 0,
+            },
+          },
+        },
+        transitions: [
+          {
+            event: 'ACTION_COMPLETED',
+            condition: 'fetch_facilities.data.total > 0',
+            nextStepId: 'emit_facility_options',
+          },
+          {
+            event: 'ACTION_COMPLETED',
+            nextStepId: 'emit_no_facilities',
+          },
+          {
+            event: 'ACTION_FAILED',
+            nextStepId: 'emit_no_facilities',
+          },
+        ],
+      },
+      {
+        id: 'emit_facility_options',
+        type: 'ACTION',
+        config: {
+          action: 'WORKFLOW_ASK_OPTIONS',
+          resultMapping: {
+            conversationId: {
+              path: 'context.conversationId',
+              validation: {
+                required: true,
+                type: 'string',
+              },
+            },
+            question: {
+              text: {
+                default: 'Select the matching facility.',
+              },
+              options: {
+                path: 'fetch_facilities.data.records',
+              },
+            },
+            metadata: {
+              attribute: {
+                default: 'facilityId',
+              },
+              optionKeyField: {
+                default: '_id',
+              },
+              optionLabelField: {
+                default: 'facilityName',
+              },
+              optionValueField: {
+                default: '_id',
+              },
+            },
+          },
+        },
+        transitions: [
+          {
+            event: 'ACTION_COMPLETED',
+            nextStepId: 'appointment_date',
+          },
+        ],
+      },
+      {
+        id: 'emit_no_facilities',
+        type: 'ACTION',
+        config: {
+          action: 'WORKFLOW_NO_OPTIONS_FOUND',
+          resultMapping: {
+            conversationId: {
+              path: 'context.conversationId',
+              validation: {
+                required: true,
+                type: 'string',
+              },
+            },
+            message: {
+              default: 'No facilities matched your answer. Please enter a different facility name.',
+            },
+          },
+        },
+        transitions: [
+          {
+            event: 'ACTION_COMPLETED',
+            nextStepId: 'facilityId',
+          },
+        ],
+      },
+      {
+        id: 'appointment_date',
+        type: 'QUESTIONNAIRE',
+        transitions: [
+          {
+            event: 'CONVERSATION_COMPLETED',
+            nextStepId: 'done',
+          },
+        ],
+      },
+      {
+        id: 'done',
+        type: 'END',
+        transitions: [],
+      },
+    ],
+  },
+  {
+    _id: new Types.ObjectId('680000000000000000000004'),
     name: 'HTTP Post Authentication First Workflow',
+    startStepId: 'confirm_values',
     code: 'WF_HTTP_POST_AUTH_FIRST',
     metadata: {
       purpose: 'http-post-auth',
@@ -308,22 +514,50 @@ const sampleWorkflows = (): SeedWorkflow[] => [
     isActive: true,
     steps: [
       {
-        id: 'authenticate_first',
+        id: 'confirm_values',
+        type: 'QUESTIONNAIRE',
+        transitions: [
+          {
+            event: 'CONVERSATION_STARTED',
+            nextStepId: 'authenticate',
+          },
+        ],
+      },
+      {
+        id: 'authenticate',
         type: 'ACTION',
         config: {
-          action: 'HTTP_POST',
-          baseUrl: '{{env.HS_BACKEND_BASE_URL}}',
-          url: '{{env.HS_BACKEND_BASE_URL}}/appointments',
-          username: '{{env.HS_BACKEND_USERNAME}}',
-          password: '{{env.HS_BACKEND_PASSWORD}}',
+          action: "HTTP_POST",
+          url: "{{env.HS_BACKEND_BASE_URL}}/authentication",
+          username: "{{env.HS_BACKEND_USERNAME}}",
+          password: "{{env.HS_BACKEND_PASSWORD}}",
           accessTokenDuration: 3600000,
-          responseMapping: {
-            accessToken: {
-              path: 'data.accessToken',
-              transform: 'string',
-              default: null,
+          requestBodyMapping: {
+            strategy: {
+              path: "",
+              default: "local"
             },
+            email: {
+              "path": "username"
+            },
+            password: {
+              path: "password"
+            }
           },
+          responseBodyMapping: {
+            "accessToken": {
+              "path": "data.accessToken",
+              "transform": "string",
+              "default": null
+            }
+          },
+          resultMapping: {
+            "accessToken": {
+              "path": "accessToken",
+              "transform": "string",
+              "default": null
+            }
+          }
         },
         transitions: [
           {
@@ -351,6 +585,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         type: 'END',
         transitions: [],
       },
+      
     ],
   },
 ];

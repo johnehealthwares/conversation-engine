@@ -1,8 +1,10 @@
+import { Workflow } from "./workflow.domain";
+
 export type WorkflowStatus = 'ACTIVE' | 'COMPLETED' | 'STOPPED';
 
 export interface WorkflowInstance {
   id: string;
-  workflowId: string;
+  workflowId: string | Workflow;
   workflowVersion: number;
   flowId: string;
   state: Record<string, any>;

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { WorkflowEventType } from '../entities/step-transition';
+import { WorkflowDataMapping, WorkflowDataMappingEntry, WorkflowStepConfig } from '../entities/workflow-step';
 
 export type ActionResult = {
   success: boolean;
@@ -23,55 +24,127 @@ function addDuration(date: Date, duration?: string | number) {
   return new Date(date.getTime() + 60 * 60 * 1000);
 }
 
+function getValueByPath(obj: Record<string, any>, path: string) {
+  if (!path) return obj;
+  return path.split('.').reduce((acc, part) => acc?.[part], obj);
+}
+
+function applyTransform(value: any, transform?: 'string' | 'number' | 'boolean' | { prepend?: string; append?: string }) {
+  
+  if (value == null || transform == null) return value;
+
+ 
+  switch (transform) {
+    case 'number':
+      return Number(value);
+    case 'boolean':
+      return Boolean(value);
+    case 'string':
+      return String(value);
+    default:
+      if ('prepend' in transform) return String(transform.prepend) + value;
+      return value;
+  }
+}
+
+function mapData(source: Record<string, any>, mapping?: WorkflowDataMapping): Record<string, any> {
+  if (!mapping) return {};
+
+  const result: Record<string, any> = {};
+
+  for (const key in mapping) {
+    const entry = mapping[key];
+
+    // 1️⃣ Simple string path
+    if (typeof entry === 'string') {
+      result[key] = getValueByPath(source, entry);
+      continue;
+    }
+
+    // 2️⃣ $regex mapping
+    if (entry.$regex) {
+      const rawValue = getValueByPath(source, entry.$regex.path);
+      if (rawValue !== undefined) {
+        result[key] = { $regex: rawValue, $options: entry.$options || '' };
+      }
+      continue;
+    }
+
+    // 3️⃣ Standard path with optional default & transform
+    if (entry.path) {
+      let value = getValueByPath(source, entry.path);
+      if (value === undefined && entry.default !== undefined) value = entry.default;
+      value = applyTransform(value, entry.transform);
+      result[key] = value;
+      continue;
+    }
+
+    // 4️⃣ Nested object (child nodes)
+    result[key] = mapData(source, entry);
+  }
+
+  return result;
+}
+
 export async function handleHttpPost(
-  config: Record<string, any>,
+  config: WorkflowStepConfig,
+  state: Record<string, any>
+): Promise<ActionResult> {
+    return handleHttp(config, state, 'POST');
+}
+
+
+export async function handleHttpGet(
+  config: WorkflowStepConfig,
+  state: Record<string, any>
+): Promise<ActionResult> {
+    return handleHttp(config, state, 'GET');
+}
+
+export async function handleHttpRequest(
+  config: WorkflowStepConfig,
   state: Record<string, any>,
+): Promise<ActionResult> {
+  const method = String(config.method || 'POST').toUpperCase() === 'GET'
+    ? 'GET'
+    : 'POST';
+  return handleHttp(config, state, method);
+}
+
+export async function handleHttp(
+  config: WorkflowStepConfig,
+  state: Record<string, any>,
+  method: 'GET' | 'POST'
 ): Promise<ActionResult> {
   try {
     const nextConfig = { ...config };
-    const now = new Date();
-    const expiryTime = nextConfig.expiryTime ? new Date(nextConfig.expiryTime) : null;
-    const baseUrl = nextConfig.baseUrl || nextConfig.url?.split('/').slice(0, 3).join('/');
-
-    if (!expiryTime || Number.isNaN(expiryTime.getTime()) || expiryTime <= now) {
-      const authResponse = await axios.post(
-        `${baseUrl}/authentication`,
-        {
-          strategy: 'local',
-          email: nextConfig.username,
-          password: nextConfig.password,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      nextConfig.accessToken = authResponse.data?.accessToken ?? nextConfig.accessToken ?? null;
-      nextConfig.expiryTime = addDuration(now, nextConfig.accessTokenDuration).toISOString();
-    }
-
+     
     const headers = {
-      ...(nextConfig.headers ?? {}),
-      ...(nextConfig.accessToken
-        ? {
-            Authorization:
-              nextConfig.headers?.Authorization ??
-              `Bearer ${nextConfig.accessToken}`,
-          }
-        : {}),
+      ...(nextConfig.headers || {}),
+      ...mapData({ ...state, ...nextConfig }, nextConfig.headersMapping),
     };
+    const params = {
+      ...(nextConfig.params || {}),
+      ...mapData(state, nextConfig.queryMapping),
+    };
+    const body =
+      nextConfig.payload ??
+      mapData(state, nextConfig.requestBodyMapping || nextConfig.mapping);
 
-    const response = await axios.post(nextConfig.url, state, { headers });
+    const responseBody = await axios.request({
+      method,
+      url: nextConfig.url,
+      headers,
+      params,
+      data: method === 'GET' ? undefined : body,
+    });
 
     return {
       success: true,
-      data: {
-        data: response.data,
-      },
+      data: responseBody.data,
       metadata: {
-        status: response.status,
+        status: responseBody.status,
+        headers: responseBody.headers,
       },
       updatedConfig: nextConfig,
     };

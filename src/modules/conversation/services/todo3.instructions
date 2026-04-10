@@ -1,0 +1,53 @@
+Implemented on 2026-04-10
+
+Completed
+- Moved the event bus into `src/shared/events` behind a replaceable transport abstraction.
+- Removed direct `EventEmitter2` usage from workflow-facing services and routed bus publishes through the shared event bus.
+- Added explicit event subscribers in both modules:
+  - conversation subscriber for `WORKFLOW_ASK_OPTIONS` and `WORKFLOW_NO_OPTIONS_FOUND`
+  - workflow subscriber for conversation/workflow lifecycle events
+- Removed the old competing wildcard workflow subscriber path from module wiring so events are not processed twice.
+- Verified `WORKFLOW_PROCESSED` questions emit `WORKFLOW_ANSWER_RECEIVED` through the real bus.
+- Implemented workflow-driven option publishing with action handlers:
+  - `HTTP_GET`
+  - `EMIT_EVENT`
+  - `WORKFLOW_ASK_OPTIONS`
+  - `WORKFLOW_NO_OPTIONS_FOUND`
+- Fixed action execution so custom workflow events can be emitted while `ACTION_COMPLETED` still advances the workflow.
+- Enabled nested `resultMapping` payloads so workflows can emit:
+  - `conversationId`
+  - `question.text`
+  - `question.options`
+  - `metadata`
+- Implemented dynamic conversation-side option handling and normalized workflow-provided options from raw API records.
+- Fixed workflow option persistence so the selected option value becomes the saved valid answer.
+- Conversation now advances to the next real questionnaire question after workflow option selection instead of re-asking the original workflow question.
+- Added a built-in seeded workflow and questionnaire for:
+  - customer name
+  - facility lookup via workflow
+  - appointment date
+- Added integration/regression coverage for:
+  - normal questions still work
+  - workflow-backed dynamic option lookup
+  - workflow not triggered for non-workflow questions
+  - workflow submission flow still works
+  - no duplicate `WORKFLOW_ASK_OPTIONS` emission in the new path
+
+Important bug fixes
+- `HTTP_POST` previously executed `axios.get`; fixed HTTP method handling via `axios.request`.
+- Added legacy compatibility for `HTTP_REQUEST` and `mapping`.
+- Fixed condition evaluation so workflow expressions can reference workflow state directly.
+- Fixed event sequencing by removing async fire-and-forget subscriber registration that allowed race conditions between steps.
+- Fixed `maxTransitionsPerRun` handling to use event-chain sequence metadata instead of a state counter that accumulated forever.
+- Fixed conversation schema persistence for `workflowInstanceId`.
+- Fixed workflow option outbound response creation to use a valid ObjectId question id.
+- Fixed question processor default processed answer behavior for non-API questions.
+- Fixed API-processed answer handling regression in question processor.
+
+Validation
+- `npm run build`
+- `npm run test:e2e -- test/modules/conversation/conversation.e2e-spec.ts test/modules/conversation/workflow-submission.e2e-spec.ts test/modules/conversation/workflow-dynamic-options.e2e-spec.ts test/modules/workflow/workflow-processing.e2e-spec.ts`
+
+Open notes
+- The shared event bus currently uses the in-memory transport adapter by default.
+- The transport boundary is now isolated so Redis/Kafka can replace it later without rewriting conversation/workflow business logic.

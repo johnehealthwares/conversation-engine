@@ -13,6 +13,9 @@ export class Workflow {
   @Prop({ required: true, unique: true, trim: true })
   code: string;
 
+  @Prop({ required: true, trim: true })
+  startStepId: string;
+
   @Prop({ type: Object, default: {} })
   metadata?: Record<string, any>; // e.g., description, tags
 

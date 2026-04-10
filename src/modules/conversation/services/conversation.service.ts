@@ -8,10 +8,13 @@ import { Types } from 'mongoose';
 import {
   ChannelDomain,
   ConversationDomain,
+  ConversationReponseAction,
   ConversationState,
   ConversationStatus,
   ParticipantDomain,
+  ProcessMode,
   QuestionDomain,
+  QuestionType,
   QuestionnaireDomain,
   RenderMode,
 } from '../../../shared/domain';
@@ -36,6 +39,7 @@ import {
 import { FilterConversationDto } from '../controllers/dto/filter-conversation.dto';
 import { ProcessConversationResponseDto } from '../controllers/dto/process-conversation-response.dto';
 import { ChannelService } from '../../../channels/services/channel.service';
+import { WorkflowEventType } from 'src/modules/workflow/entities/step-transition';
 
 
 @Injectable()
@@ -128,15 +132,19 @@ export class ConversationService {
       questions,
     );
 
-    console.log({ created })
-      if (created.id) {
-        await this.workflowProcessor.conversationStarted(
-          created.id,
-          questionnaire.id,
-          participant.phone!,
-          questionnaire.code,
-        );
+    if (created.id) {
+      const workflowInstance = await this.workflowProcessor.conversationStarted(
+        created.id,
+        questionnaire.id,
+        participant.phone!,
+        questionnaire.code,
+      );
+      if (workflowInstance?.id) {
+        created = await this.conversationRepository.save(created.id, {
+          workflowInstanceId: workflowInstance.id,
+        });
       }
+    }
     return created;
   }
 
@@ -213,7 +221,6 @@ export class ConversationService {
     const participant = await this.participantService.findOne(conversation.participantId);
     const channel = await this.channelService.findOne(conversation.channelId);
     const questionnaire = await this.questionnaireService.findOne(conversation.questionnaireId);
-    console.log({ conversation })
     return this.processInboundMessage(
       channel,
       participant,
@@ -303,6 +310,87 @@ export class ConversationService {
     return question;
   }
 
+  private resolveNextQuestionFromConversation(
+    conversation: ConversationDomain,
+    currentQuestion: QuestionDomain,
+  ): QuestionDomain | null {
+    const questions = conversation.questions ?? [];
+
+    if (currentQuestion.nextQuestionId) {
+      const explicitNext = questions.find(
+        (question) => question.id === currentQuestion.nextQuestionId,
+      );
+      if (explicitNext) {
+        return explicitNext;
+      }
+    }
+
+    const orderedQuestions = [...questions].sort((left, right) => left.index - right.index);
+    const currentIndex = orderedQuestions.findIndex(
+      (question) => question.id === currentQuestion.id,
+    );
+
+    return currentIndex >= 0 && currentIndex < orderedQuestions.length - 1
+      ? orderedQuestions[currentIndex + 1]
+      : null;
+  }
+
+  private async completeConversationFromAnswer(
+    conversation: ConversationDomain,
+    participant: ParticipantDomain,
+    currentQuestion: QuestionDomain,
+    processedAnswer: string,
+    context: MessageContext,
+    conversationContext: Record<string, any>,
+  ): Promise<ConversationResponse> {
+    this.logger.log(
+      `[flow:completed] conversation=${conversation.id} questionnaire=${conversation.questionnaireId}`,
+    );
+
+    await this.conversationRepository.save(conversation.id!, {
+      status: ConversationStatus.COMPLETED,
+      state: ConversationState.COMPLETED,
+      endedAt: new Date(),
+      context: conversationContext,
+    });
+
+    const questionnaire = await this.questionnaireService.findOne(conversation.questionnaireId);
+
+    await this.sendMessage(
+      conversation,
+      questionnaire.conclusion || 'Thank you for completing the questionnaire',
+      false,
+      false,
+      currentQuestion.id,
+      currentQuestion.attribute,
+    );
+
+    const payload = {
+      ...(await this.responseService.getValidResponsesMapByAttribute(conversation.id!)),
+      ...conversationContext,
+    };
+    await this.workflowProcessor.conversationCompleted(
+      conversation.id!,
+      participant.phone!,
+      currentQuestion.attribute,
+      processedAnswer,
+      payload,
+    );
+
+    return {
+      responded: true,
+      reason: ProcessAnswerStatus.COMPLETED,
+      action: ConversationReponseAction.REPLIED_CONVERSATION,
+      message: ProcessAnswerStatus.COMPLETED,
+      context: {
+        questionnaireCode: conversation.questionnaireId,
+        participant,
+        message: processedAnswer,
+        ...context,
+      },
+    };
+  }
+
   async processInboundMessageFromPhoneNumber(channel: ChannelDomain, phone: string, message, questionnaireCode: string, context: MessageContext) {
     this.logger.debug(
       `[flow:phone-ingest] phone=${phone} questionnaire=${questionnaireCode || 'n/a'} message=${String(message).slice(0, 40)}`,
@@ -322,7 +410,6 @@ export class ConversationService {
     this.logger.log(
       `[flow:start] participant=${participant.id} channel=${channel.id} questionnaire=${questionnaireCode || 'n/a'}`,
     );
-    let result: Record<string, any> = {};
     let conversation = await this.conversationRepository.findActiveByParticipantId(participant.id);
     const questionnaire: QuestionnaireDomain | null = conversation ? await this.questionnaireService.findOne(conversation.questionnaireId) : await this.questionnaireService.findByCode(questionnaireCode);
     //Scenario 1 : Input that can't be processed was provided
@@ -334,7 +421,7 @@ export class ConversationService {
       return {
         responded: false,
         reason: questionnaireCode ? ProcessAnswerStatus.CONVERSATION_NOT_FOUND : ProcessAnswerStatus.QUESTIONNAIRE_CODE_NOT_PROVIDED,
-        action: "SENT_INIT_MESSAGE",
+        action: ConversationReponseAction.SENT_INIT_MESSAGE,
         message: "Please select an action",
         context: { questionnaireCode, }
       };
@@ -348,7 +435,7 @@ export class ConversationService {
       const startQuestion = this.questionnaireService.getStartQuestion(questionnaire);
 
       conversation = await this.create(questionnaire.id, channel.id, participant.id, startQuestion.id!, questionnaire.questions);
-      
+
       const resent = false;
       await this.sendQuestion(conversation, startQuestion, resent);
       conversation = await this.conversationRepository.save(
@@ -362,23 +449,36 @@ export class ConversationService {
       // ✅ EVENT 1️⃣  -Conversation Started
 
       if (conversation.id) {
-        await this.workflowProcessor.conversationStarted(
+        const workflowInstance = await this.workflowProcessor.conversationStarted(
           conversation.id,
           questionnaire.id,
           participant.phone!,
           message,
         );
+        if (workflowInstance?.id) {
+          conversation = await this.conversationRepository.save(conversation.id, {
+            workflowInstanceId: workflowInstance.id,
+          });
+        }
       }
 
       return {
         responded: true,
         reason: ProcessAnswerStatus.CONVERSATION_NOT_FOUND,
-        action: "CREATED_NEW_CONVERSATION",
+        action: ConversationReponseAction.CREATED_NEW_CONVERSATION,
         message: "CREATED_NEW_CONVERSATION",
         context: { questionnaireCode, channel, participant, message, ...context, conversationId: conversation.id }
       };
     }
     if (conversation?.id) {
+      if (conversation.context?.workflow?.pendingQuestion) {
+        return this.handleWorkflowResponse(
+          conversation,
+          participant,
+          message,
+          context,
+        );
+      }
 
       const currentQuestion = await this.getCurrentQuestion(conversation);
       this.logger.debug(
@@ -411,7 +511,7 @@ export class ConversationService {
         return {
           responded: true,
           reason: ProcessAnswerStatus.COMPLETED,
-          action: "STOPPED_CONVERSATION",
+          action: ConversationReponseAction.STOPPED_CONVERSATION,
           message: "Conversation stopped",
           context: { questionnaireCode, channel, participant, message, ...context }
         };
@@ -426,16 +526,21 @@ export class ConversationService {
         return {
           responded: true,
           reason: ProcessAnswerStatus.COMPLETED,
-          action: "COMPLETED_CONVERSATION",
+          action: ConversationReponseAction.COMPLETED_CONVERSATION,
           message: "Conversation completed",
           context: { questionnaireCode, channel, participant, message, ...context }
         };
       }
+
       const processingResult = await this.questionProcessor.processAnswer(
         conversation,
         currentQuestion,
         message,
       );
+
+      const validInboundResponse =
+        processingResult.status !== ProcessAnswerStatus.VALIDATION_ERROR &&
+        processingResult.status !== ProcessAnswerStatus.WORKFLOW_HANDLING;
 
       await this.responseService.saveInboundResponse(
         conversation.id!,
@@ -443,11 +548,59 @@ export class ConversationService {
         currentQuestion.id!,
         currentQuestion.attribute,
         message,
-        processingResult.status !== ProcessAnswerStatus.VALIDATION_ERROR,
-        processingResult.status !== ProcessAnswerStatus.VALIDATION_ERROR
-          ? processingResult.processedAnswer
+        validInboundResponse,
+        validInboundResponse ? (processingResult as any).processedAnswer : undefined,
+        processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING
+          ? {
+              workflowPendingSelection: true,
+              query: processingResult.value,
+            }
           : undefined,
       );
+
+      if (processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING) {
+        await this.conversationRepository.save(conversation.id!, {
+          context: {
+            ...conversation.context,
+            workflow: {
+              step: 'OPTION_KEY_SELECTION',
+              event: WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
+              query: processingResult.value,
+              resumeQuestionId: currentQuestion.id,
+              sourceQuestion: currentQuestion,
+            },
+          },
+          state: ConversationState.PROCESSING,
+        });
+
+        const workflowPayload = {
+          ...(await this.responseService.getValidResponsesMapByAttribute(
+            conversation.id!,
+          )),
+          ...(conversation.context || {}),
+          [currentQuestion.attribute]: processingResult.value,
+          answerValue: processingResult.value,
+          questionId: currentQuestion.id,
+          questionAttribute: currentQuestion.attribute,
+          ...(processingResult.metadata || {}),
+        };
+
+        await this.workflowProcessor.workflowQuestionAnswered(
+          conversation.id,
+          participant.phone!,
+          currentQuestion.attribute,
+          processingResult.value,
+          workflowPayload,
+        );
+
+        return {
+          responded: true,
+          reason: processingResult.status,
+          action: ConversationReponseAction.PROCESSING_WORKFLOW_ANSWER,
+          message,
+          context: { questionnaireCode, channel, participant, message, ...context }
+        };
+      }
 
       if (processingResult.status === ProcessAnswerStatus.VALIDATION_ERROR) {
         this.logger.warn(
@@ -464,69 +617,37 @@ export class ConversationService {
         );
         // ✅ EVENT 3️⃣ -Answer Invalid 
 
-          const payload = {
-            ...(await this.responseService.getValidResponsesMapByAttribute(
-              conversation.id!,
-            )),
-            ...(conversation.context || {}),
-          };
-          await this.workflowProcessor.answerInValid(
-            conversation.id,
-            participant.phone!,
-            currentQuestion.attribute,
-            processingResult.value,
-            payload,
-          );
+        const payload = {
+          ...(await this.responseService.getValidResponsesMapByAttribute(
+            conversation.id!,
+          )),
+          ...(conversation.context || {}),
+        };
+        await this.workflowProcessor.answerInValid(
+          conversation.id,
+          participant.phone!,
+          currentQuestion.attribute,
+          processingResult.value,
+          payload,
+        );
         return {
           responded: true,
           reason: processingResult.status,
-          action: "REPLIED_CONVERSATION",
+          action: ConversationReponseAction.REPLIED_CONVERSATION,
           message: processingResult.message,
           context: { questionnaireCode, channel, participant, message, ...context }
         };
       }
 
       if (processingResult.status === ProcessAnswerStatus.COMPLETED) {
-        this.logger.log(
-          `[flow:completed] conversation=${conversation.id} questionnaire=${conversation.questionnaireId}`,
-        );
-        await this.conversationRepository.save(conversation.id!, {
-          status: ConversationStatus.COMPLETED,
-          state: ConversationState.COMPLETED,
-          endedAt: new Date(),
-        });
-        const questionnaire = await this.questionnaireService.findOne(conversation.questionnaireId)
-
-        await this.sendMessage(
+        return this.completeConversationFromAnswer(
           conversation,
-          questionnaire.conclusion || 'Thank you for completing the questionnaire',
-          false,
-          false,
-          currentQuestion.id,
-          currentQuestion.attribute,
+          participant,
+          currentQuestion,
+          String(processingResult.processedAnswer ?? message),
+          { questionnaireCode, channel, participant, message, ...context },
+          conversation.context || {},
         );
-        // ✅ EVENT 4️⃣ -Conversation Completed
-          const payload = {
-            ...(await this.responseService.getValidResponsesMapByAttribute(
-              conversation.id!,
-            )),
-            ...(conversation.context || {}),
-          };
-          await this.workflowProcessor.conversationCompleted(
-            conversation.id,
-            participant.phone!,
-            currentQuestion.attribute,
-            processingResult.processedAnswer as string,
-            payload,
-          );
-        
-        return {
-          responded: true,
-          reason: processingResult.status,
-          action: "REPLIED_CONVERSATION",
-          message: processingResult.status,
-          context: { questionnaireCode, channel, participant, message, ...context }
-        };
       }
 
       const updatedConversation = await this.conversationRepository.save(
@@ -534,19 +655,19 @@ export class ConversationService {
         {
           context: conversation.context,
           state: ConversationState.PROCESSING,
-          currentQuestionId: processingResult.nextQuestion.id,
+          currentQuestionId: processingResult?.nextQuestion?.id,
         },
       );
-
-      await this.sendQuestion(
-        updatedConversation,
-        processingResult.nextQuestion,
-        currentQuestion.id === processingResult.nextQuestion.id
-      );
-      this.logger.debug(
-        `[flow:advance] conversation=${conversation.id} next=${processingResult.nextQuestion.attribute}`,
-      );
-      // ✅ EVENT 5️⃣ -Answer Valid
+      if (processingResult.status === ProcessAnswerStatus.NEXT_QUESTION) {
+        await this.sendQuestion(
+          updatedConversation,
+          processingResult.nextQuestion,
+          currentQuestion.id === processingResult.nextQuestion.id
+        );
+        this.logger.debug(
+          `[flow:advance] conversation=${conversation.id} next=${processingResult.nextQuestion.attribute}`,
+        );
+        // ✅ EVENT 5️⃣ -Answer Valid
         const payload = {
           ...(await this.responseService.getValidResponsesMapByAttribute(
             conversation.id!,
@@ -560,25 +681,223 @@ export class ConversationService {
           processingResult.processedAnswer as string,
           payload,
         );
-      
+
+        return {
+          responded: true,
+          reason: processingResult.status,
+          action: ConversationReponseAction.REPLIED_CONVERSATION,
+          message: processingResult.status,
+          context: { questionnaireCode, channel, participant, message, ...context }
+        };
+      }
+    }
+    return {
+      responded: true,
+      reason: ProcessAnswerStatus.CONVERSATION_NOT_FOUND_FOR_SOME_REASON,
+      action: ConversationReponseAction.CONVERSATION_NOT_FOUND,
+      message: "Conversation not found",
+      context: { questionnaireCode, channel, participant, message, ...context }
+    };
+
+
+  }
+
+  private async handleWorkflowResponse(
+    conversation: ConversationDomain,
+    participant: ParticipantDomain,
+    message: string,
+    context: MessageContext,
+  ): Promise<ConversationResponse> {
+    const wf = conversation.context.workflow;
+    const question = wf.pendingQuestion;
+    const sourceQuestion =
+      wf.sourceQuestion ||
+      conversation.questions?.find((item) => item.id === wf.resumeQuestionId);
+
+    const result = await this.questionProcessor.processAnswer(
+      conversation,
+      question,
+      message,
+    );
+
+    if (result.status === ProcessAnswerStatus.VALIDATION_ERROR) {
+      await this.sendMessage(
+        conversation,
+        result.message,
+        false,
+        true,
+        question.id,
+        question.attribute,
+      );
+
       return {
         responded: true,
-        reason: processingResult.status,
-        action: "REPLIED_CONVERSATION",
-        message: processingResult.status,
-        context: { questionnaireCode, channel, participant, message, ...context }
+        reason: result.status,
+        action: ConversationReponseAction.INVALID_ANSWER,
+        message: result.message,
+        context: { questionnaireCode: conversation.questionnaireId, participant, message, ...context }
       };
-    } else {
-      this.logger.warn('[flow:orphan] Questionnaire existed but no conversation could be created or resolved.');
-      return {
-        responded: true,
-        reason: ProcessAnswerStatus.CONVERSATION_NOT_FOUND_FOR_SOME_REASON,
-        action: "BAD_REQUEST_ERROR",
-        message: "Conversation not founc",
-        context: { questionnaireCode, channel, participant, message, ...context }
+    }
+
+    if (wf.step === 'OPTION_KEY_SELECTION') {
+      if (!sourceQuestion?.id) {
+        throw new NotFoundException('Workflow source question not found');
+      }
+
+      const processedAnswer = String((result as any).processedAnswer ?? message.trim());
+      const nextQuestion = this.resolveNextQuestionFromConversation(
+        conversation,
+        sourceQuestion,
+      );
+      const cleanedContext = {
+        ...conversation.context,
+        workflow: null,
       };
 
+      await this.responseService.saveInboundResponse(
+        conversation.id!,
+        conversation.participantId,
+        sourceQuestion.id,
+        sourceQuestion.attribute,
+        message,
+        true,
+        processedAnswer,
+        {
+          workflowSelection: {
+            query: wf.query,
+            optionQuestionId: question.id,
+          },
+        },
+      );
+
+      const updated = await this.conversationRepository.save(conversation.id!, {
+        context: cleanedContext,
+        currentQuestionId: nextQuestion?.id,
+        state: nextQuestion
+          ? ConversationState.PROCESSING
+          : ConversationState.COMPLETED,
+      });
+
+      if (!nextQuestion) {
+        return this.completeConversationFromAnswer(
+          updated,
+          participant,
+          sourceQuestion,
+          processedAnswer,
+          context,
+          cleanedContext,
+        );
+      }
+
+      await this.sendQuestion(updated, nextQuestion, false);
+
+      return {
+        responded: true,
+        reason: ProcessAnswerStatus.NEXT_QUESTION,
+        action: ConversationReponseAction.WORKFLOW_COMPLETED,
+        message: "Completed workflow option selection",
+        context: { questionnaireCode: '', participant, message, ...context }
+      };
     }
+    return {
+      responded: true,
+      reason: ProcessAnswerStatus.WORKFLOW_HANDLING,
+      action: ConversationReponseAction.INVALID_ANSWER,
+      message: "No Valid Option selected workflow",
+      context: { questionnaireCode: '', participant, message, ...context }
+    };
+  }
+
+  async handleWorkflowOptions(payload) {
+    const { conversationId, question, metadata } = payload;
+
+    const conversation = await this.findOne(conversationId);
+    const sourceQuestion =
+      conversation.context?.workflow?.sourceQuestion ||
+      conversation.questions?.find((item) => item.id === conversation.currentQuestionId);
+    const normalizedOptions = (question.options || []).map((option, index) => ({
+      key:
+        `${option.key + 1}`,
+        // option?.[metadata?.optionKeyField || 'key'] ??
+        // option?.id ??
+        // option?._id ??
+        // String(index + 1),
+      label:
+        option.label ??
+        option?.[metadata?.optionLabelField || 'label'] ??
+        option?.facilityName ??
+        option?.name ??
+        option?.value ??
+        `Option ${index + 1}`,
+      value:
+        option.value ??
+        option?.[metadata?.optionValueField || 'value'] ??
+        option?.id ??
+        option?._id ??
+        String(index + 1),
+    }));
+    const pendingQuestion: QuestionDomain = {
+      id: question.id || new Types.ObjectId().toString(),
+      questionnaireId: conversation.questionnaireId,
+      attribute:
+        question.attribute ||
+        metadata?.attribute ||
+        `${sourceQuestion?.attribute || 'workflow'}_options`,
+      text: question.text,
+      questionType: QuestionType.SINGLE_CHOICE,
+      renderMode: RenderMode.DROPDOWN,
+      processMode: ProcessMode.OPTION_PROCESSED,
+      index: sourceQuestion?.index ?? 0,
+      isRequired: true,
+      tags: ['workflow', 'dynamic-options'],
+      nextQuestionId: sourceQuestion?.nextQuestionId,
+      options: normalizedOptions,
+      validationRules: [],
+      isActive: true,
+      metadata: {
+        ...(question.metadata || {}),
+        ...(metadata || {}),
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await this.conversationRepository.save(conversationId, {
+      context: {
+        ...conversation.context,
+        workflow: {
+          ...(conversation.context.workflow || {}),
+          event: WorkflowEventType.WORKFLOW_ASK_OPTIONS,
+          pendingQuestion,
+          metadata,
+          resumeQuestionId: conversation.currentQuestionId,
+          sourceQuestion,
+        },
+      },
+    });
+
+    await this.sendQuestion(conversation, pendingQuestion, false);
+  }
+
+  async handleNoResult(payload) {
+    const { conversationId, message } = payload;
+    const conversation = await this.findOne(conversationId);
+
+    await this.conversationRepository.save(conversationId, {
+      state: ConversationState.WAITING_FOR_USER,
+      context: {
+        ...conversation.context,
+        workflow: {
+          ...(conversation.context.workflow || {}),
+          pendingQuestion: null,
+        },
+      },
+    });
+
+    await this.sendMessage(conversation, message, false, true);
+
+    // ⚠️ DO NOT clear workflow
+    // Stay on same question
   }
 
   async stopConversation(conversationId: string) {

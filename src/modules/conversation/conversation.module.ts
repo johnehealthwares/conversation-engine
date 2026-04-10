@@ -16,11 +16,14 @@ import { ConversationController } from './controllers/conversation.controller';
 import { ParticipantController } from './controllers/participant.controller';
 import { Question, QuestionSchema } from '../questionnaire/schemas/question.schema';
 import { Questionnaire, QuestionnaireSchema } from '../questionnaire/schemas/questionnaire.schema';
+import { SharedEventBusModule } from 'src/shared/events';
+import { ConversationWorkflowEventsSubscriber } from './subscribers/workflow-events.subscriber';
 
 @Module({
   imports: [
     forwardRef(() => ChannelsModule),
     QuestionnaireModule,
+    SharedEventBusModule,
     WorkflowEngineModule,
     MongooseModule.forFeature([
       { name: Conversation.name, schema: ConversationSchema },
@@ -38,6 +41,7 @@ import { Questionnaire, QuestionnaireSchema } from '../questionnaire/schemas/que
     ParticipantService,
     ParticipantRepository,
     WorkflowProcessorService,
+    ConversationWorkflowEventsSubscriber,
   ],
   exports: [ConversationService, ParticipantService, ResponseService],
 })

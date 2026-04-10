@@ -1,13 +1,14 @@
 // services/workflow-processor.service.ts
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 import type { IWorkflowEvent } from '../interfaces/event.interface';
 import { WorkflowInstanceService } from '../services/workflow-instance';
-import { WorkflowService } from '../services/workflow-service';
 import { evaluateCondition } from '../utils/condition-evaluator';
 import { StepRunnerService } from '../services/step-runner.service';
 import { WorkflowHistoryService } from '../services/workflow-history.service';
 import { WorkflowEventType } from '../entities/step-transition';
+import { WorkflowStep, WorkflowStepType } from '../entities/workflow-step';
+import { WorkflowInstance } from 'src/shared/domain/workflow-instance.domain';
+import { Workflow } from 'src/shared/domain/workflow.domain';
 
 @Injectable()
 export class WorkflowProcessorService {
@@ -15,48 +16,38 @@ export class WorkflowProcessorService {
 
   constructor(
     private readonly instanceService: WorkflowInstanceService,
-    private readonly workflowService: WorkflowService,
     private readonly stepRunnerService: StepRunnerService,
     private readonly workflowHistoryService: WorkflowHistoryService,
-  ) { }
+  ) {}
 
   // ---------------------------
   // GENERIC HANDLER
   // ---------------------------
   private async processEvent(eventType: WorkflowEventType, event: IWorkflowEvent) {
-    const workflowInstanceId = event.context?.workflowInstanceId;
-    if (!workflowInstanceId) {
-      this.logger.warn(
-        `[workflow:event] Missing workflowInstanceId for event=${eventType}`,
-      );
-      return;
-    }
+    const workflowInstanceId = event.context.workflowInstanceId;
 
     this.logger.debug(
-      `[workflow:event] type=${eventType} instance=${workflowInstanceId} step=${event.context?.stepId || 'n/a'}`,
+      `[workflow:event] type=${eventType} instance=${workflowInstanceId}`,
     );
 
     const instance = await this.instanceService.findById(workflowInstanceId);
-    const workflow = await this.workflowService.findById(instance.workflowId);
+    const workflow = instance.workflowId as Workflow;
     if (!workflow) {
       this.logger.error(`Workflow not found: ${instance.workflowId}`);
       return;
     }
-    if (!instance.currentStepId) {
-      this.logger.warn(`No currentStepId for instance=${workflowInstanceId}`);
-      return;
-    }
+
+
     const step = workflow.steps.find(s => s.id === instance.currentStepId);
 
     if (!step) {
-      this.logger.error(`WorflowInstanceStep not found: for currentStepId ${instance.currentStepId}, will now map with config?.stepAttribute`);
+      this.logger.error(`WorkflowInstanceStep not found: for currentStepId ${instance.currentStepId}, will now map with config?.stepAttribute`);
       return;
     }
     const maxTransitionsPerRun = Math.max(1, workflow.maxTransitionsPerRun ?? 25);
-    const transitionsRun = Number(instance.state?.__transitionsRun ?? 0);
+    const sequence = Number(event.meta?.sequence ?? 0);
 
-
-    if (transitionsRun >= maxTransitionsPerRun) {
+    if (sequence >= maxTransitionsPerRun) {
       this.logger.warn(
         `[workflow:event] maxTransitionsPerRun reached for instance=${workflowInstanceId}`,
       );
@@ -67,19 +58,7 @@ export class WorkflowProcessorService {
     const updatedState = {
       ...instance.state,
       ...(event.payload || {}),
-      __transitionsRun: transitionsRun + 1,
     };
-
-    // const candidates = step.transitions.filter(//TODO:  Is this relevant?
-    //   t => t.event === eventType || t.event === '*'
-    // );
-
-    // if (!candidates.length) {
-    //   this.logger.debug(
-    //     `No transitions for event=${eventType} on step=${step.id}`
-    //   );
-    //   return;
-    // }
 
     await this.workflowHistoryService.record(
       workflowInstanceId,
@@ -89,65 +68,56 @@ export class WorkflowProcessorService {
 
     // 2️⃣ Find matching transition
     const transition = step.transitions.find(t => {
-      if (t.event !== eventType) return false;
+      if (t.event && t.event !== eventType) return false;
       return !t.condition || evaluateCondition(t.condition, updatedState);
     });
 
     if (!transition) return;
 
-
-    await this.workflowHistoryService.record(
-      workflowInstanceId,
-      instance.currentStepId,
-      eventType,
-    );
-
     // 3️⃣ Move to next step
     const nextStep = workflow.steps.find(s => s.id === transition.nextStepId);
 
-    await this.instanceService.update(instance.id, {
+    const updatedInstance = await this.instanceService.update(instance.id, {
       currentStepId: transition.nextStepId,
       state: updatedState,
     });
 
     // 4️⃣ Execute step if needed
     if (nextStep) {
-      await this.executeStep(nextStep, instance.id, updatedState, workflow.id, event);
+      await this.executeStep(event, nextStep, updatedInstance);
     }
+
   }
 
   async handleEvent(event: IWorkflowEvent) {
-    await this.processEvent(event.type, event);
+    await this.processEvent(event.type as WorkflowEventType, event);
   }
 
   // ---------------------------
   // STEP EXECUTION
   // ---------------------------
   private async executeStep(
-    step: any,
-    workflowInstanceId: string,
-    state: Record<string, any>,
-    workflowId: string,
     triggerEvent: IWorkflowEvent,
+    step: WorkflowStep,
+    workflowInstance: WorkflowInstance,
   ) {
     switch (step.type) {
-      case 'ACTION':
+      case WorkflowStepType.ACTION:
         await this.stepRunnerService.runStep(
-          workflowId,
-          step.id,
-          workflowInstanceId,
           triggerEvent,
+          step,
+          workflowInstance,
         );
         break;
 
-      case 'END':
-        await this.instanceService.update(workflowInstanceId, {
+      case WorkflowStepType.END:
+        await this.instanceService.update(workflowInstance.id, {
           status: 'COMPLETED',
         });
         break;
 
-      case 'QUESTIONNAIRE':
-      case 'WAIT':
+      case WorkflowStepType.QUESTIONNAIRE:
+      case WorkflowStepType.WAIT:
       default:
         // do nothing — wait for next event
         break;
@@ -158,37 +128,6 @@ export class WorkflowProcessorService {
   // EVENT HANDLERS
   // ---------------------------
 
-  @OnEvent(WorkflowEventType.CONVERSATION_STARTED)
-  async handleConversationStarted(event: IWorkflowEvent) {
-    await this.handleEvent(event);
-  }
-
-  @OnEvent(WorkflowEventType.ANSWER_VALID)
-  async handleAnswerValid(event: IWorkflowEvent) {
-    await this.handleEvent(event);
-  }
-
-  @OnEvent(WorkflowEventType.ANSWER_INVALID)
-  async handleAnswerInvalid(event: IWorkflowEvent) {
-    await this.handleEvent(event);
-  }
-
-  @OnEvent(WorkflowEventType.ACTION_COMPLETED)
-  async handleActionCompleted(event: IWorkflowEvent) {
-    await this.handleEvent(event);
-  }
-
-  @OnEvent(WorkflowEventType.ACTION_FAILED)
-  async handleActionFailed(event: IWorkflowEvent) {
-    await this.handleEvent(event);
-  }
-
-  @OnEvent(WorkflowEventType.CONVERSATION_COMPLETED)
-  async handleConversationCompleted(event: IWorkflowEvent) {
-    await this.handleEvent(event);
-  }
-
-  @OnEvent(WorkflowEventType.CONVERSATION_STOPPED)
   async handleConversationStopped(event: IWorkflowEvent) {
     await this.processEvent(WorkflowEventType.CONVERSATION_STOPPED, event);
 

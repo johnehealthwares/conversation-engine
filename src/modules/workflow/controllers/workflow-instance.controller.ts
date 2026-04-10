@@ -29,7 +29,7 @@ export class WorkflowInstanceController {
   @Get('by-flow/:flowId/active')
   @ApiOperation({ summary: 'Get the active workflow instance for a conversation/flow id' })
   findActiveByConversationId(@Param('flowId') flowId: string) {
-    return this.workflowInstanceService.getActiveByConversationId(flowId);
+    return this.workflowInstanceService.getActiveByFlowId(flowId);
   }
 
   @Get(':id')

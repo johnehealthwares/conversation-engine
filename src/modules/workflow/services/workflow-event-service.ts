@@ -2,17 +2,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WorkflowEvent, WorkflowEventDocument } from '../entities/event';
 import { FilterWorkflowEventDto } from '../controllers/dto/filter-workflow-event.dto';
-import { IWorkflowEvent } from '../interfaces/event.interface';
 import { WorkflowEventType } from '../entities/step-transition';
+import { EventBusService } from 'src/shared/events';
 
 @Injectable()
 export class WorkflowEventService {
   constructor(
     @InjectModel(WorkflowEvent.name) private eventModel: Model<WorkflowEventDocument>,
-    private eventEmitter: EventEmitter2,
+    private readonly eventBusService: EventBusService,
   ) {}
 
   async emit(input: {
@@ -48,26 +47,21 @@ export class WorkflowEventService {
     });
     await event.save();
 
-    const emittedEvent: IWorkflowEvent = {
-      id: event._id.toString(),
-      type: input.type,
-      payload: input.payload ?? {},
-      context: {
-        workflowId: input.workflowId,
+    await this.eventBusService.emit(
+      input.type,
+      input.payload ?? {},
+      {
         workflowInstanceId: input.workflowInstanceId,
-        stepId: input.stepId,
         correlationId: input.correlationId,
       },
-      meta: {
+      {
         timestamp: event.createdAt?.toISOString() ?? new Date().toISOString(),
         source: 'workflow-event-service',
         idempotencyKey: input.idempotencyKey,
         sequence: input.sequence,
         stateSchema: input.stateSchema ?? null,
       },
-    };
-
-    this.eventEmitter.emit(input.type, emittedEvent);
+    );
     return event;
   }
 

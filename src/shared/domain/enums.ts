@@ -3,6 +3,8 @@ export enum QuestionType {
   NUMBER = 'number',
   DATE = 'date',
   EMAIL = 'email',
+  OBJECT_ID = 'object_id',
+  UUID = 'uuid',
   SINGLE_CHOICE = 'single_choice',
   MULTI_CHOICE = 'multi_choice',
   BOOLEAN = 'boolean',
@@ -31,6 +33,7 @@ export enum ProcessMode {
   AI_PROCESSED = 'ai_processed',
   QUESTION_TYPE = 'question_type',
   RULE_ENGINE = 'rule_engine',
+  WORKFLOW_PROCESSED = 'workflow_processed',
 }
 
 export enum ProcessingStrategy {
@@ -69,4 +72,17 @@ export enum ConversationStatus {
   COMPLETED = 'COMPLETED',
   STOPPED = 'STOPPED',
   CANCELLED = 'CANCELLED',
+}
+
+
+export enum ConversationReponseAction {
+  CREATED_NEW_CONVERSATION = "CREATED_NEW_CONVERSATION",
+  CONVERSATION_NOT_FOUND = "CONVERSATION_NOT_FOUND",
+  INVALID_ANSWER = "INVALID_ANSWER",
+  REPLIED_CONVERSATION = "REPLIED_CONVERSATION",
+  SENT_INIT_MESSAGE = "SENT_INIT_MESSAGE",
+  STOPPED_CONVERSATION = "STOPPED_CONVERSATION",
+  COMPLETED_CONVERSATION = "COMPLETED_CONVERSATION",
+  PROCESSING_WORKFLOW_ANSWER = "PROCESSING_WORKFLOW_ANSWER",
+  WORKFLOW_COMPLETED = "WORKFLOW_COMPLETED"
 }

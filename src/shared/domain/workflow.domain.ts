@@ -5,6 +5,7 @@ export interface Workflow {
   name: string;
   code: string;
   metadata?: Record<string, any>;
+  startStepId: string;
   steps: WorkflowStep[];
   version: number;
   maxTransitionsPerRun: number;

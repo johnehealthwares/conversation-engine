@@ -25,6 +25,7 @@ export class WorkflowInstanceService {
       _id: new Types.ObjectId(),
       workflowVersion: data.workflowVersion ?? workflow.version,
       ...data,
+      currentStepId: workflow.startStepId,
     });
     return toDomain(await instance.save());
   }
@@ -48,17 +49,18 @@ export class WorkflowInstanceService {
     return toDomain(instances);
   }
 
-  async findById(id: string): Promise<WorkflowInstanceDomain> {
+  async findById(id: string): Promise<WorkflowInstanceDomain> { 
     const instance = await this.instanceModel
       .findOne({ _id: new Types.ObjectId(id) })
+      .populate('workflowId')
       .lean();
     if (!instance) throw new NotFoundException('Workflow instance not found');
     return toDomain(instance);
   }
 
-  async getActiveByConversationId(conversationId: string): Promise<WorkflowInstanceDomain | null> {
+  async getActiveByFlowId(flowId: string): Promise<WorkflowInstanceDomain | null> {
     const instance = await this.instanceModel
-      .findOne({ flowId: conversationId, status: 'ACTIVE' })
+      .findOne({ flowId, status: 'ACTIVE' })
       .lean();
     if(instance)
     return toDomain(instance);

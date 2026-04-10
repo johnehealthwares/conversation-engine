@@ -1,13 +1,7 @@
 import { Module } from '@nestjs/common';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MongooseModule } from '@nestjs/mongoose';
 import { QuestionnaireModule } from '../questionnaire/questionnaire.module';
-
-import { EventBusService } from './services/event-bus.service';
-import { WorkflowEngineService } from './services/workflow-engine.service';
-import { TransitionService } from './services/transition.service';
 import { StepRunnerService } from './services/step-runner.service';
-import { WorkflowSubscriber } from './subscribers/subscriber';
 import { WorkflowInstance, WorkflowInstanceSchema } from './entities/instance';
 import { Workflow, WorkflowSchema } from './entities/workflow';
 import { WorkflowEvent, WorkflowEventSchema } from './entities/event';
@@ -28,11 +22,13 @@ import { WorkflowHistoryService } from './services/workflow-history.service';
 import { WorkflowAttachmentService } from './services/workflow-attachment.service';
 import { WorkflowAttachmentValidationService } from './services/workflow-attachment-validation.service';
 import { WorkflowAttachmentController } from './controllers/workflow-attachment.controller';
+import { SharedEventBusModule } from 'src/shared/events';
+import { WorkflowEventsSubscriber } from './subscribers/workflow-events.subscriber';
 
 @Module({
   imports: [
     QuestionnaireModule,
-    EventEmitterModule.forRoot(),
+    SharedEventBusModule,
     MongooseModule.forFeature([
       { name: Workflow.name, schema: WorkflowSchema },
       { name: WorkflowInstance.name, schema: WorkflowInstanceSchema },
@@ -49,9 +45,6 @@ import { WorkflowAttachmentController } from './controllers/workflow-attachment.
     WorkflowAttachmentController,
   ],
   providers: [
-    EventBusService,
-    WorkflowEngineService,
-    TransitionService,
     StepRunnerService,
     WorkflowInstanceService,
     WorkflowService,
@@ -60,11 +53,9 @@ import { WorkflowAttachmentController } from './controllers/workflow-attachment.
     WorkflowHistoryService,
     WorkflowAttachmentService,
     WorkflowAttachmentValidationService,
-    WorkflowSubscriber,
+    WorkflowEventsSubscriber,
   ],
   exports: [
-    EventBusService,
-    WorkflowEngineService,
     WorkflowInstanceService,
     WorkflowService,
     WorkflowEventService,

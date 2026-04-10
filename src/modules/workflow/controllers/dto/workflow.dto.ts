@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { WorkflowEventType } from '../../entities/step-transition';
+import { WorkflowStepType } from '../../entities/workflow-step';
 
 export class WorkflowTransitionDto {
 
@@ -37,9 +38,14 @@ export class WorkflowStepDto {
   @IsNotEmpty()
   id: string;
 
-  @ApiProperty({ enum: ['QUESTIONNAIRE', 'ACTION', 'WAIT', 'END'] })
-  @IsIn(['QUESTIONNAIRE', 'ACTION', 'WAIT', 'END'])
-  type: 'QUESTIONNAIRE' | 'ACTION' | 'WAIT' | 'END';
+
+  @ApiProperty()
+  @IsString()
+  startStepId: string;
+
+  @ApiProperty({ enum: WorkflowStepType })
+  @IsIn(Object.values(WorkflowStepType))
+  type: WorkflowStepType;
 
   @ApiPropertyOptional({ type: Object })
   @IsOptional()
