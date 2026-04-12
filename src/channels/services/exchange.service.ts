@@ -157,6 +157,7 @@ export class ExchangeService implements OnModuleInit {
     metadata?: Record<string, any>;
     rawPayload?: Record<string, any>;
     status?: ExchangeStatus;
+    isNavigationRequest?: boolean
   }): Promise<Exchange> {
     const received = await this.exchangeModel.findOne({ messageId: payload.messageId })
     const answered = await this.exchangeModel.findOne({ messageId: payload.metadata?.contextId })
@@ -177,7 +178,7 @@ export class ExchangeService implements OnModuleInit {
     const exchange = await this.create({
       channelId: payload.channelId,
       channelType: payload.channelType,
-      direction: ExchangeDirection.INBOUND,
+      direction: payload.isNavigationRequest ? ExchangeDirection.PAGE_REQUEST : ExchangeDirection.INBOUND,
       status: payload.status || ExchangeStatus.RECEIVED,
       sender: payload.sender,
       message: payload.message,

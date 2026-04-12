@@ -52,7 +52,7 @@ export class WhatsappSender implements ChannelSender {
     const request = {
           messaging_product: 'whatsapp',
           to: destination.phone,
-          ...this.buildWhatsAppControl(`${title || ''} ${message}`, context?.containsLink, +context.page)
+          ...this.buildWhatsAppControl(`${message}`, context?.containsLink, +context.page)
         };
     try {
       const axiosResponse = await axios.post<WhatsAppSendMessageResponse>(

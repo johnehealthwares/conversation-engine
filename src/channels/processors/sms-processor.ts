@@ -37,18 +37,18 @@ export class SmsProcessor implements ChannelProcessor {
       rawPayload: payload,
     });
 
-    return this.conversationService.processInboundMessageFromPhoneNumber(
-      channel,
-      from,
-      text,
-      questionnaireCode,
-      {
-        channelId,
-        channelType: ChannelType.SMS,
-        questionnaireCode,
-        messageId: '',
-      },
-    );
+    // return this.conversationService.processInboundMessageFromPhoneNumber(
+    //   channel,
+    //   from,
+    //   text,
+    //   questionnaireCode,
+    //   {
+    //     channelId,
+    //     channelType: ChannelType.SMS,
+    //     questionnaireCode,
+    //     messageId: '',
+    //   },
+    // );
   }
 
   async fromNigeriaBulkSmsSender() {

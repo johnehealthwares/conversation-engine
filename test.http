@@ -187,7 +187,7 @@ curl -X 'POST' \
   -d '{
   "channelId": "69bd061c11bf835d976c4e2f",
   "from": "08012345679",
-  "text": "WF_APPOINTMENT_Q"
+  "text": "ORDER_PAYMENT"
 }'
 
 

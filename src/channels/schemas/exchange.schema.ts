@@ -5,6 +5,7 @@ export type ExchangeDocument = Exchange;
 
 export enum ExchangeDirection {
   INBOUND = 'INBOUND',
+  PAGE_REQUEST = 'PAGE_REQUEST',
   OUTBOUND = 'OUTBOUND',
 }
 

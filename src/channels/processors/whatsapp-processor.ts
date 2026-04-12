@@ -82,6 +82,7 @@ export class WhatsappProcessor implements ChannelProcessor {
       questionnaireCode,
       metadata: { source: 'whatsapp_webhook', contextId: context?.id },//TODO: Add other thing in contet
       rawPayload: payload,
+      isNavigationRequest: nativigationRequest,
     });
     return exchange;
   }
