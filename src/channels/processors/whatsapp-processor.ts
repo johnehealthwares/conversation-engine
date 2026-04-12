@@ -34,10 +34,11 @@ export class WhatsappProcessor implements ChannelProcessor {
         return exchange;
       }
 
-      const message = payload?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+      const entry = payload?.entry?.[0];
+      const change = entry?.changes?.[0];
+      const message = change?.value?.messages?.[0];
       const context = message?.context;
-      const phone =
-        payload?.entry?.[0]?.changes?.[0]?.value?.contacts?.[0]?.wa_id || 'unknown';
+      const phone = change?.value?.contacts?.[0]?.wa_id || 'unknown';
 
       let text;
       if (message?.interactive?.button_reply?.id) {

@@ -181,25 +181,59 @@ curl -v -X POST https://conversation-engine-5epg.onrender.com/api/channels/send-
 
 ###Send Message
 curl -X 'POST' \
-  'http://localhost:8090/api/webhooks/mock' \
+  'http://localhost:8090/api/webhooks/whatsapp' \
   -H 'accept: */*' \
   -H 'Content-Type: application/json' \
   -d '{
-  "channelId": "69bd061c11bf835d976c4e2f",
-  "from": "08012345679",
-  "text": "ORDER_PAYMENT"
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "123456789",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "1234567890",
+              "phone_number_id": "2348022224166"
+            },
+            "contacts": [
+              {
+                "profile": {
+                  "name": "John Doe"
+                },
+                "wa_id": "2348022224166"
+              }
+            ],
+            "messages": [
+              {
+                "from": "2348022224166",
+                "id": "wamid.HBgMNT..8",
+                "timestamp": "1700000000",
+                "type": "text",
+                "text": {
+                  "body": "hello"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
 }'
 
 
 ###Send Message
 curl -X 'POST' \
-  'http://localhost:8090/api/webhooks/mock' \
+  'http://localhost:8090/api/webhooks/whatsapp' \
   -H 'accept: */*' \
   -H 'Content-Type: application/json' \
   -d '{
   "channelId": "69bd061c11bf835d976c4e2f",
-  "from": "08012345679",
-  "text": "new"
+  "from": "+2348012345679",
+  "message": "new"
 }'
 
 

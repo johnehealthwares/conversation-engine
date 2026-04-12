@@ -422,7 +422,7 @@ export class ConversationService {
       );
       try {
         const intentResponse = await this.intentService.classify(message)
-        if (!intentResponse.intent || intentResponse.intent === 'UNKNOWN' || Number(intentResponse.confidence) < 0.5) {
+        if (!intentResponse.intent || intentResponse.intent === 'UNKNOWN' || Number(intentResponse.confidence) < 0.9) {
           await this.sendInitMessage(channel.id, participant, intentResponse.response);
           return {
             responded: false,
