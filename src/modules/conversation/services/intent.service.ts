@@ -61,8 +61,14 @@ export class IntentService {
   constructor(private readonly httpService: HttpService) {}
 
 
-async classify(text: string): Promise<IntentResponse> {
-  const response = await this.classifyIntent({ text,  sender_role: 'patient' });
+async classify(text: string, phone): Promise<IntentResponse> {
+  const response = await this.classifyIntent({ 
+    text,  
+    sender_role: 'patient',
+    conversation_id: phone,
+    persist_history: true,
+    store_assistant_response: true
+ });
   return response;
 
 }

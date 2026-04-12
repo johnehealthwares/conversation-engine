@@ -313,31 +313,6 @@ export class ConversationService {
     return question;
   }
 
-  private resolveNextQuestionFromConversation(
-    conversation: ConversationDomain,
-    currentQuestion: QuestionDomain,
-  ): QuestionDomain | null {
-    const questions = conversation.questions ?? [];
-
-    if (currentQuestion.nextQuestionId) {
-      const explicitNext = questions.find(
-        (question) => question.id === currentQuestion.nextQuestionId,
-      );
-      if (explicitNext) {
-        return explicitNext;
-      }
-    }
-
-    const orderedQuestions = [...questions].sort((left, right) => left.index - right.index);
-    const currentIndex = orderedQuestions.findIndex(
-      (question) => question.id === currentQuestion.id,
-    );
-
-    return currentIndex >= 0 && currentIndex < orderedQuestions.length - 1
-      ? orderedQuestions[currentIndex + 1]
-      : null;
-  }
-
   private async completeConversationFromAnswer(
     conversation: ConversationDomain,
     participant: ParticipantDomain,
@@ -421,7 +396,7 @@ export class ConversationService {
         `[flow:init] No active conversation or questionnaire found for code=${questionnaireCode || 'n/a'}. Finding intent or Sending init message.`,
       );
       try {
-        const intentResponse = await this.intentService.classify(message)
+        const intentResponse = await this.intentService.classify(message, participant.phone)
         if (!intentResponse.intent || intentResponse.intent === 'UNKNOWN' || Number(intentResponse.confidence) < 0.9) {
           await this.sendInitMessage(channel.id, participant, intentResponse.response);
           return {
@@ -576,7 +551,7 @@ export class ConversationService {
       currentQuestion.attribute,
       message,
       validInboundResponse,
-      validInboundResponse ? (processingResult as any).processedAnswer : undefined,
+      validInboundResponse ? processingResult.rawValue : undefined,
       processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING
         ? {
           workflowPendingSelection: true,
