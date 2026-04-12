@@ -25,6 +25,24 @@ export class StepRunnerService {
     private readonly workflowHistoryService: WorkflowHistoryService,
   ) { }
 
+  private buildActionContext(
+    state: Record<string, any>,
+    triggerEvent: IWorkflowEvent,
+  ): Record<string, any> {
+    return {
+      ...state,
+      state,
+      payload: {
+        ...(triggerEvent.state || {}),
+        answer: triggerEvent.context?.value,
+        attribute: triggerEvent.context?.attribute,
+        participant: triggerEvent.context?.participant,
+      },
+      context: triggerEvent.context || {},
+      event: triggerEvent,
+    };
+  }
+
   async runStep(
     triggerEvent: IWorkflowEvent,
     step: WorkflowStep,
@@ -220,7 +238,8 @@ export class StepRunnerService {
     instance: WorkflowInstance,
   ) {
     const mergedConfig = { ...instance.config, ...(step.config || {}) };
-    const resolvedConfig = this.resolveConfigValue(mergedConfig, instance.state);
+    const actionContext = this.buildActionContext(instance.state || {}, triggerEvent);
+    const resolvedConfig = this.resolveConfigValue(mergedConfig, actionContext);
 
     this.logger.log(
       `Executing action "${resolvedConfig.action}" for step ${step.id}`,
@@ -232,7 +251,7 @@ export class StepRunnerService {
     const result = await this.executeActionWithRetry(
       handler,
       resolvedConfig,
-      instance.state,
+      actionContext,
     );
 
     const durationMs = Date.now() - startedAt;
@@ -280,10 +299,13 @@ export class StepRunnerService {
     const eventPayload = step.config?.resultMapping
       ? this.extractMappedFields(step.config.resultMapping, {
         ...updatedState,
+        state: updatedState,
         step: updatedStepState,
         trigger: triggerEvent.state,
+        payload: actionContext.payload,
         context: triggerEvent.context,
         metadata: result.metadata,
+        event: triggerEvent,
       })
       : response;
 

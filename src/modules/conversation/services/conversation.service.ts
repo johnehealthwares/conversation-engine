@@ -576,7 +576,7 @@ export class ConversationService {
       currentQuestion.attribute,
       message,
       validInboundResponse,
-      validInboundResponse ? (processingResult as any).processedAnswer : undefined,
+      validInboundResponse ? (processingResult as any).processedValue : undefined,
       processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING
         ? {
           workflowPendingSelection: true,
@@ -737,7 +737,7 @@ export class ConversationService {
     if (result.status === ProcessAnswerStatus.VALIDATION_ERROR) {
       await this.sendMessage(
         conversation,
-        result.rawValue,
+        result.validationMessage,
         false,
         true,
         question.id,
@@ -748,7 +748,7 @@ export class ConversationService {
         responded: true,
         reason: result.status,
         action: ConversationReponseAction.INVALID_ANSWER,
-        message: result.rawValue,
+        message: result.validationMessage,
         context: { questionnaireCode: conversation.questionnaireId, participant, message, ...context }
       };
     }
@@ -825,6 +825,61 @@ export class ConversationService {
       conversation.context?.workflow?.sourceQuestion ||
       conversation.questions?.find((item) => item.id === conversation.currentQuestionId);
     const normalizedOptions = question.options || [];
+
+    if (sourceQuestion?.attribute === 'clientId' && normalizedOptions.length === 1) {
+      const [selectedOption] = normalizedOptions;
+      const nextQuestion =
+        conversation.questions?.find((item) => item.id === sourceQuestion.nextQuestionId) ||
+        null;
+      const cleanedContext = {
+        ...conversation.context,
+        workflow: null,
+      };
+
+      await this.responseService.saveInboundResponse(
+        conversation.id!,
+        conversation.participantId,
+        sourceQuestion.id!,
+        sourceQuestion.attribute,
+        String(selectedOption.label || selectedOption.key || selectedOption.value),
+        true,
+        selectedOption,
+        {
+          workflowSelection: {
+            autoSelected: true,
+            optionQuestionId: question.id,
+          },
+        },
+      );
+
+      const updated = await this.conversationRepository.save(conversationId, {
+        context: cleanedContext,
+        currentQuestionId: nextQuestion?.id,
+        state: nextQuestion
+          ? ConversationState.PROCESSING
+          : ConversationState.COMPLETED,
+      });
+
+      if (!nextQuestion) {
+        const participant = await this.participantService.findOne(conversation.participantId);
+        await this.completeConversationFromAnswer(
+          updated,
+          participant,
+          sourceQuestion,
+          String(selectedOption.value),
+          {
+            questionnaireCode: conversation.questionnaireId,
+            messageId: `workflow-auto-${Date.now()}`,
+          },
+          cleanedContext,
+        );
+        return;
+      }
+
+      await this.sendQuestion(updated, nextQuestion, false);
+      return;
+    }
+
     const pendingQuestion: QuestionDomain = {
       id: question.id || new Types.ObjectId().toString(),
       questionnaireId: conversation.questionnaireId,
@@ -868,7 +923,8 @@ export class ConversationService {
   }
 
   async handleNoResult(payload) {
-    const { conversationId, message } = payload;
+    const conversationId = payload.conversationId || payload.flowId;
+    const { message } = payload;
     const conversation = await this.findOne(conversationId);
 
     await this.conversationRepository.save(conversationId, {

@@ -234,5 +234,40 @@ curl -X 'POST' \
   -d '{
   "channelId": "69bd061c11bf835d976c4e2f",
   "from": "08012345679",
-  "text": "clinic"
+  "text": "1"
 }'
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "08012345679",
+  "text": "out"
+}'
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "08012345679",
+  "text": "08157815368"
+}'
+
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "08012345679",
+  "text": "2026-05-01"
+}'
+

@@ -20,6 +20,24 @@ export class WorkflowProcessorService {
     private readonly workflowHistoryService: WorkflowHistoryService,
   ) {}
 
+  private buildEvaluationContext(
+    state: Record<string, any>,
+    event: IWorkflowEvent,
+  ): Record<string, any> {
+    return {
+      ...state,
+      state,
+      payload: {
+        ...(event.state || {}),
+        answer: event.context?.value,
+        attribute: event.context?.attribute,
+        participant: event.context?.participant,
+      },
+      context: event.context || {},
+      event,
+    };
+  }
+
   // ---------------------------
   // GENERIC HANDLER
   // ---------------------------
@@ -59,6 +77,7 @@ export class WorkflowProcessorService {
       ...instance.state,
       ...(event.state || {}),
     };
+    const evaluationContext = this.buildEvaluationContext(updatedState, event);
 
     await this.workflowHistoryService.record(
       workflowInstanceId,
@@ -68,8 +87,8 @@ export class WorkflowProcessorService {
 
     // 2️⃣ Find matching transition
     const transition = step.transitions.find(t => {
-      if (t.event && t.event !== eventType) return false;
-      return !t.condition || evaluateCondition(t.condition, updatedState);
+      if (t.event && t.event !== '*' && t.event !== eventType) return false;
+      return !t.condition || evaluateCondition(t.condition, evaluationContext);
     });
 
     if (!transition) return;

@@ -410,9 +410,9 @@ const sampleWorkflows = (): SeedWorkflow[] => [
             nextStepId: 'fetch_clients',
           },
           {
-            event: WorkflowEventType.ACTION_COMPLETED,
+            event: '*',
             condition: 'state.facilityId && state.locationId && state.clientId && state.appointment_type && state.start_time',
-            nextStepId: 'await_completion',
+            nextStepId: 'create_appointment',
           },
           {
             event: '*',
@@ -565,7 +565,8 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           url: '{{env.HS_BACKEND_BASE_URL}}/location',
           queryMapping: {
             facility: { path: 'state.facilityId' },
-            name: { path: 'payload.answer' },
+            'name[$regex]': { path: 'payload.answer' },
+            'name[$options]': { default: 'i' },
           },
           responseBodyMapping: {
             locations: {
@@ -615,7 +616,8 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           action: 'HTTP_GET',
           url: '{{env.HS_BACKEND_BASE_URL}}/client',
           queryMapping: {
-            phone: { path: 'payload.answer' },
+            'phone[$regex]': { path: 'payload.answer' },
+            'phone[$options]': { default: 'i' },
           },
           responseBodyMapping: {
             clients: {
@@ -638,7 +640,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
               transform: 'map',
               map: {
                 key: 'index',
-                label: 'name',
+                label: 'firstname',
                 value: '_id',
               },
             },
@@ -714,7 +716,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         transitions: [
           {
             event: 'ACTION_COMPLETED',
-            nextStepId: 'facilityId',
+            nextStepId: 'locationId',
           },
         ],
       },
@@ -740,7 +742,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         transitions: [
           {
             event: 'ACTION_COMPLETED',
-            nextStepId: 'facilityId',
+            nextStepId: 'clientId',
           },
         ],
       },

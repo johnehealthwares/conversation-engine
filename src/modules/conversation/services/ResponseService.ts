@@ -83,7 +83,9 @@ export class ResponseService {
       conversationId: new Types.ObjectId(conversationId),
       direction: ResponseDirection.INBOUND,
       valid: true,
-    }).lean();
+    })
+      .sort({ timestamp: 1, _id: 1 })
+      .lean();
 
     this.logger.debug(
       `[response:aggregate] Aggregated ${responses.length} valid inbound responses for conversation=${conversationId}`,

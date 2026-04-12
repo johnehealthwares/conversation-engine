@@ -29,7 +29,7 @@ export class MockProcessor implements ChannelProcessor {
       sender: from,
       message: text,
       messageId,
-      questionnaireCode: text,
+      questionnaireCode: questionnaireCode || text,
       metadata: { source: 'mock_webhook' },
       rawPayload: payload,
     });
