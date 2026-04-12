@@ -576,7 +576,7 @@ export class ConversationService {
       currentQuestion.attribute,
       message,
       validInboundResponse,
-      validInboundResponse ? (processingResult as any).processedValue : undefined,
+      validInboundResponse ? (processingResult as any).processedAnswer : undefined,
       processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING
         ? {
           workflowPendingSelection: true,
@@ -607,15 +607,7 @@ export class ConversationService {
       this.logger.warn(
         `[flow:invalid] conversation=${conversation.id} question=${currentQuestion.attribute}`,
       );
-      const resent = true;
-      await this.sendMessage(
-        conversation,
-        processingResult.validationMessage,
-        Boolean(currentQuestion.hasLink),
-        resent,
-        currentQuestion.id,
-        currentQuestion.attribute,
-      );
+
       // ✅ EVENT 3️⃣ -Answer Invalid 
 
       const payload = {
@@ -631,6 +623,18 @@ export class ConversationService {
         processingResult.rawValue,
         payload,
       );
+
+      // Only send manual message if workflow didn't take over (no instance or no transition)
+      const resent = true;
+      await this.sendMessage(
+        conversation,
+        processingResult.validationMessage,
+        Boolean(currentQuestion.hasLink),
+        resent,
+        currentQuestion.id,
+        currentQuestion.attribute,
+      );
+
       return {
         responded: true,
         reason: processingResult.status,
@@ -669,6 +673,7 @@ export class ConversationService {
       const updatedConversation = await this.conversationRepository.save(
         conversation.id,
         {
+          // Removed context: conversation.context to prevent overwriting async updates
           state: ConversationState.PROCESSING,
           currentQuestionId: processingResult?.nextQuestion?.id,
         },
@@ -824,62 +829,63 @@ export class ConversationService {
     const sourceQuestion =
       conversation.context?.workflow?.sourceQuestion ||
       conversation.questions?.find((item) => item.id === conversation.currentQuestionId);
+      
+    //   if (sourceQuestion?.attribute === 'clientId' && normalizedOptions.length === 1) {
+    //   const [selectedOption] = normalizedOptions;
+    //   const nextQuestion =
+    //     conversation.questions?.find((item) => item.id === sourceQuestion.nextQuestionId) ||
+    //     null;
+    //   const cleanedContext = {
+    //     ...conversation.context,
+    //     workflow: null,
+    //   };
+
+    //   await this.responseService.saveInboundResponse(
+    //     conversation.id!,
+    //     conversation.participantId,
+    //     sourceQuestion.id!,
+    //     sourceQuestion.attribute,
+    //     String(selectedOption.label || selectedOption.key || selectedOption.value),
+    //     true,
+    //     selectedOption,
+    //     {
+    //       workflowSelection: {
+    //         autoSelected: true,
+    //         optionQuestionId: question.id,
+    //       },
+    //     },
+    //   );
+
+    //   const updated = await this.conversationRepository.save(conversationId, {
+    //     context: cleanedContext,
+    //     currentQuestionId: nextQuestion?.id,
+    //     state: nextQuestion
+    //       ? ConversationState.PROCESSING
+    //       : ConversationState.COMPLETED,
+    //   });
+
+    //   if (!nextQuestion) {
+    //     const participant = await this.participantService.findOne(conversation.participantId);
+    //     await this.completeConversationFromAnswer(
+    //       updated,
+    //       participant,
+    //       sourceQuestion,
+    //       String(selectedOption.value),
+    //       {
+    //         questionnaireCode: conversation.questionnaireId,
+    //         messageId: `workflow-auto-${Date.now()}`,
+    //       },
+    //       cleanedContext,
+    //     );
+    //     return;
+    //   }
+
+    //   await this.sendQuestion(updated, nextQuestion, false);
+    //   return;
+    // }
+
+
     const normalizedOptions = question.options || [];
-
-    if (sourceQuestion?.attribute === 'clientId' && normalizedOptions.length === 1) {
-      const [selectedOption] = normalizedOptions;
-      const nextQuestion =
-        conversation.questions?.find((item) => item.id === sourceQuestion.nextQuestionId) ||
-        null;
-      const cleanedContext = {
-        ...conversation.context,
-        workflow: null,
-      };
-
-      await this.responseService.saveInboundResponse(
-        conversation.id!,
-        conversation.participantId,
-        sourceQuestion.id!,
-        sourceQuestion.attribute,
-        String(selectedOption.label || selectedOption.key || selectedOption.value),
-        true,
-        selectedOption,
-        {
-          workflowSelection: {
-            autoSelected: true,
-            optionQuestionId: question.id,
-          },
-        },
-      );
-
-      const updated = await this.conversationRepository.save(conversationId, {
-        context: cleanedContext,
-        currentQuestionId: nextQuestion?.id,
-        state: nextQuestion
-          ? ConversationState.PROCESSING
-          : ConversationState.COMPLETED,
-      });
-
-      if (!nextQuestion) {
-        const participant = await this.participantService.findOne(conversation.participantId);
-        await this.completeConversationFromAnswer(
-          updated,
-          participant,
-          sourceQuestion,
-          String(selectedOption.value),
-          {
-            questionnaireCode: conversation.questionnaireId,
-            messageId: `workflow-auto-${Date.now()}`,
-          },
-          cleanedContext,
-        );
-        return;
-      }
-
-      await this.sendQuestion(updated, nextQuestion, false);
-      return;
-    }
-
     const pendingQuestion: QuestionDomain = {
       id: question.id || new Types.ObjectId().toString(),
       questionnaireId: conversation.questionnaireId,
@@ -923,8 +929,7 @@ export class ConversationService {
   }
 
   async handleNoResult(payload) {
-    const conversationId = payload.conversationId || payload.flowId;
-    const { message } = payload;
+    const { flowId: conversationId, message } = payload;
     const conversation = await this.findOne(conversationId);
 
     await this.conversationRepository.save(conversationId, {

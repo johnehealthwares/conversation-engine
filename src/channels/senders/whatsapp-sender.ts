@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import type { Express } from 'express';
@@ -7,7 +7,7 @@ import { ChannelType, ParticipantDomain } from '../../shared/domain';
 import { ExchangeService } from '../services/exchange.service';
 import { ExchangeStatus } from '../schemas/exchange.schema';
 
- interface WhatsAppSendMessageResponse {
+interface WhatsAppSendMessageResponse {
   messaging_product: 'whatsapp';
   contacts: {
     input: string;
@@ -37,10 +37,12 @@ interface WhatsAppTemplateParams {
 
 @Injectable()
 export class WhatsappSender implements ChannelSender {
+  private readonly logger = new Logger(WhatsappSender.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly exchangeService: ExchangeService,
-  ) {}
+  ) { }
 
   async sendMessage(
     destination: ParticipantDomain,
@@ -50,10 +52,12 @@ export class WhatsappSender implements ChannelSender {
   ): Promise<void> {
     const config = this.getConfig();
     const request = {
-          messaging_product: 'whatsapp',
-          to: destination.phone,
-          ...this.buildWhatsAppControl(`${message}`, context?.containsLink, +context.page)
-        };
+      messaging_product: 'whatsapp',
+      to: destination.phone,
+      ...this.buildWhatsAppControl(`${message}`, context?.containsLink, +context.page)
+    };
+    this.logger.log(`Sending WhatsApp message to ${destination.phone}`);
+
     try {
       const axiosResponse = await axios.post<WhatsAppSendMessageResponse>(
         config.messagesUrl, request,
@@ -66,7 +70,10 @@ export class WhatsappSender implements ChannelSender {
       );
       const response = axiosResponse?.data;
       const messageId = response?.messages?.[0]?.id;
-      
+      this.logger.log(`Message sent successfully`, {
+        recipient: destination.phone,
+        messageId,
+      });
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: ChannelType.WHATSAPP,
@@ -84,6 +91,9 @@ export class WhatsappSender implements ChannelSender {
       });
     } catch (error: any) {
       const err = error?.response?.data || error.message;
+      this.logger.error(`Failed to send WhatsApp message`, err, {
+        recipient: destination.phone,
+      });
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: ChannelType.WHATSAPP,
@@ -108,12 +118,16 @@ export class WhatsappSender implements ChannelSender {
     payload: SendMediaPayload,
   ): Promise<void> {
     const config = this.getConfig();
+    this.logger.log(`Preparing to send media to ${destination.phone}`);
+
     const mediaId =
       payload.file && !payload.fileUrl
         ? await this.uploadMedia(payload.file)
         : undefined;
 
     if (!mediaId && !payload.fileUrl) {
+      this.logger.warn(`No media provided for ${destination.phone}`);
+
       throw new HttpException(
         'Provide file or fileUrl to send media',
         HttpStatus.BAD_REQUEST,
@@ -125,6 +139,7 @@ export class WhatsappSender implements ChannelSender {
 
   private async uploadMedia(file: Express.Multer.File): Promise<string> {
     const config = this.getConfig();
+    this.logger.log(`Uploading media: ${file.originalname}`);
 
     try {
       const formData = new FormData();
@@ -141,7 +156,9 @@ export class WhatsappSender implements ChannelSender {
           Authorization: `Bearer ${config.token}`,
         },
       });
-
+      this.logger.log(`Media uploaded successfully`, {
+        mediaId: response.data.id,
+      });
       if (!response?.data?.id) {
         throw new Error('WhatsApp media upload did not return media id');
       }
@@ -149,6 +166,8 @@ export class WhatsappSender implements ChannelSender {
       return response.data.id;
     } catch (error: any) {
       const err = error?.response?.data || error.message;
+      this.logger.error(`Media upload failed`, err);
+
       throw new HttpException(
         `WhatsApp media upload failed: ${JSON.stringify(err)}`,
         HttpStatus.BAD_GATEWAY,
@@ -157,43 +176,50 @@ export class WhatsappSender implements ChannelSender {
   }
 
   private async sendWhatsAppTemplate({
-  to,
-  templateName,
-  languageCode,
-  components,
-  accessToken,
-  phoneNumberId,
-}: WhatsAppTemplateParams): Promise<WhatsAppSendMessageResponse> {
-  const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`;
-
-  const payload: any = {
-    messaging_product: 'whatsapp',
     to,
-    type: 'template',
-    template: {
-      name: templateName,
-      language: { code: languageCode },
-    },
-  };
-
-  if (components) {
-    payload.template.components = components;
-  }
-
-  try {
-    const { data } = await axios.post<WhatsAppSendMessageResponse>(url, payload, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
+    templateName,
+    languageCode,
+    components,
+    accessToken,
+    phoneNumberId,
+  }: WhatsAppTemplateParams): Promise<WhatsAppSendMessageResponse> {
+    const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`;
+    this.logger.log(`Sending template message`, {
+      to,
+      templateName,
     });
+    const payload: any = {
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+      },
+    };
 
-    return data;
-  } catch (err: any) {
-    console.error('Error sending WhatsApp template:', err.response?.data || err.message);
-    throw err;
+    if (components) {
+      payload.template.components = components;
+    }
+
+    try {
+      const { data } = await axios.post<WhatsAppSendMessageResponse>(url, payload, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      this.logger.log(`Template message sent`, {
+        to,
+        templateName,
+      });
+
+      return data;
+    } catch (err: any) {
+      console.error('Error sending WhatsApp template:', err.response?.data || err.message);
+      throw err;
+    }
   }
-}
 
   private async sendMediaMessage(
     recipient: string,
@@ -203,8 +229,14 @@ export class WhatsappSender implements ChannelSender {
   ): Promise<void> {
     const senderConfig = config || this.getConfig();
     const type = payload.documentType || 'document';
+    this.logger.log(`Sending media message`, {
+      recipient,
+      type,
+    });
     const supportedTypes = ['document', 'image', 'video', 'audio'];
     if (!supportedTypes.includes(type)) {
+      this.logger.warn(`Unsupported media type: ${type}`);
+
       throw new HttpException(
         `Unsupported documentType: ${type}`,
         HttpStatus.BAD_REQUEST,
@@ -235,9 +267,14 @@ export class WhatsappSender implements ChannelSender {
         },
       );
 
-       const providerResponse = response?.data;
+      const providerResponse = response?.data;
       const messageId = providerResponse?.messages?.[0]?.id;
 
+      this.logger.log(`Media message sent`, {
+        recipient,
+        messageId,
+        type,
+      });
 
       await this.exchangeService.logOutbound({
         channelId: payload.context?.channelId,
@@ -286,134 +323,134 @@ export class WhatsappSender implements ChannelSender {
   }
 
 
-private parseControlString(input: string): ParsedControl {
-  const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
+  private parseControlString(input: string): ParsedControl {
+    const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
 
-  const text = lines[0];
+    const text = lines[0];
 
-  const options = lines.slice(1).map(line => {
-    const [id, title] = line.split(':').map(p => p.trim());
+    const options = lines.slice(1).map(line => {
+      const [id, title] = line.split(':').map(p => p.trim());
 
-    return {
-      id,
-      title: title.substring(0, 23)
-    };
-  });
+      return {
+        id,
+        title: title.substring(0, 23)
+      };
+    });
 
-  return { text, options };
-}
-
-private buildWhatsAppControl(input: string, containsLink: boolean = false, page: number = 0) {
-  const parsed = this.parseControlString(input);
-  if(isNaN(page))page = 0;
-  if (!parsed.options.length) {
-    return {
-      type: "text",
-      text: { preview_url: containsLink, body: input },
-    };
+    return { text, options };
   }
 
-  // Buttons if <=3 options
-  if (parsed.options.length <= 3) {
+  private buildWhatsAppControl(input: string, containsLink: boolean = false, page: number = 0) {
+    const parsed = this.parseControlString(input);
+    if (isNaN(page)) page = 0;
+    if (!parsed.options.length) {
+      return {
+        type: "text",
+        text: { preview_url: containsLink, body: input },
+      };
+    }
+
+    // Buttons if <=3 options
+    if (parsed.options.length <= 3) {
+      return {
+        type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: parsed.text },
+          action: {
+            buttons: parsed.options.map((o) => ({
+              type: "reply",
+              reply: {
+                id: o.id,
+                title: o.title.slice(0, 20),
+              },
+            })),
+          },
+        },
+      };
+    }
+
+    const options = parsed.options;
+    const totalOptions = options.length;
+
+    // Determine total pages
+    let pageSizeFirst = 10;
+    if (totalOptions > 10) pageSizeFirst = 9; // first page leaves space for Next
+
+    let totalPages: number;
+    if (totalOptions <= 10) {
+      totalPages = 1;
+    } else {
+      const remaining = totalOptions - 9;
+      totalPages = 1 + Math.ceil(remaining / 8);
+    }
+
+    // Calculate start index for current page
+    let start = 0;
+    if (page === 0) start = 0;
+    else start = 9 + (page - 1) * 8;
+
+    // Determine how many options this page can show
+    let pageSize = 10; // max rows
+    const hasPrev = page > 0;
+    const remainingOptions = totalOptions - start;
+
+    if (page === 0) {
+      pageSize = totalOptions > 10 ? 9 : remainingOptions; // first page
+    } else if (page < totalPages - 1) {
+      pageSize = 8; // middle pages have Prev + Next
+    } else {
+      pageSize = remainingOptions + (hasPrev ? 1 : 0); // last page may include Prev
+      if (pageSize > 10) pageSize = 10; // safety
+    }
+
+    const pageOptions = options.slice(start, start + pageSize - (hasPrev && page < totalPages - 1 ? 1 : 0));
+
+    // Build rows
+    const rows: any[] = [];
+
+    if (hasPrev) {
+      rows.push({
+        id: `page_rqst_prev_${page - 1}`,
+        title: "⬅ Previous",
+      });
+    }
+
+    rows.push(
+      ...pageOptions.map((o) => ({
+        id: o.id,
+        title: o.title.slice(0, 24),
+      })),
+    );
+
+    const isLastPage = start + pageOptions.length >= totalOptions;
+
+    if (!isLastPage) {
+      rows.push({
+        id: `page_rqst_next_${page + 1}`,
+        title: "Next ➡",
+      });
+    }
+
     return {
       type: "interactive",
       interactive: {
-        type: "button",
-        body: { text: parsed.text },
+        type: "list",
+        body: {
+          text: parsed.text,
+        },
         action: {
-          buttons: parsed.options.map((o) => ({
-            type: "reply",
-            reply: {
-              id: o.id,
-              title: o.title.slice(0, 20),
+          button: `Select (${page + 1}/${totalPages} Lists)`,
+          sections: [
+            {
+              title: "Options",
+              rows,
             },
-          })),
+          ],
         },
       },
     };
   }
-
-  const options = parsed.options;
-  const totalOptions = options.length;
-
-  // Determine total pages
-  let pageSizeFirst = 10;
-  if (totalOptions > 10) pageSizeFirst = 9; // first page leaves space for Next
-
-  let totalPages: number;
-  if (totalOptions <= 10) {
-    totalPages = 1;
-  } else {
-    const remaining = totalOptions - 9;
-    totalPages = 1 + Math.ceil(remaining / 8);
-  }
-
-  // Calculate start index for current page
-  let start = 0;
-  if (page === 0) start = 0;
-  else start = 9 + (page - 1) * 8;
-
-  // Determine how many options this page can show
-  let pageSize = 10; // max rows
-  const hasPrev = page > 0;
-  const remainingOptions = totalOptions - start;
-
-  if (page === 0) {
-    pageSize = totalOptions > 10 ? 9 : remainingOptions; // first page
-  } else if (page < totalPages - 1) {
-    pageSize = 8; // middle pages have Prev + Next
-  } else {
-    pageSize = remainingOptions + (hasPrev ? 1 : 0); // last page may include Prev
-    if (pageSize > 10) pageSize = 10; // safety
-  }
-
-  const pageOptions = options.slice(start, start + pageSize - (hasPrev && page < totalPages - 1 ? 1 : 0));
-
-  // Build rows
-  const rows: any[] = [];
-
-  if (hasPrev) {
-    rows.push({
-      id: `page_rqst_prev_${page - 1}`,
-      title: "⬅ Previous",
-    });
-  }
-
-  rows.push(
-    ...pageOptions.map((o) => ({
-      id: o.id,
-      title: o.title.slice(0, 24),
-    })),
-  );
-
-  const isLastPage = start + pageOptions.length >= totalOptions;
-
-  if (!isLastPage) {
-    rows.push({
-      id: `page_rqst_next_${page + 1}`,
-      title: "Next ➡",
-    });
-  }
-
-  return {
-    type: "interactive",
-    interactive: {
-      type: "list",
-      body: {
-        text: parsed.text,
-      },
-      action: {
-        button: `Select (${page + 1}/${totalPages} Lists)`,
-        sections: [
-          {
-            title: "Options",
-            rows,
-          },
-        ],
-      },
-    },
-  };
-}
 
   private getConfig() {
     const phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID');
@@ -421,6 +458,8 @@ private buildWhatsAppControl(input: string, containsLink: boolean = false, page:
     const apiVersion = this.configService.get<string>('WHATSAPP_API_VERSION') || 'v19.0';
 
     if (!phoneNumberId || !token) {
+      this.logger.error('Missing WhatsApp configuration');
+
       throw new HttpException(
         'WhatsApp configuration is missing',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -435,5 +474,5 @@ private buildWhatsAppControl(input: string, containsLink: boolean = false, page:
     };
   }
 
-  
+
 }
