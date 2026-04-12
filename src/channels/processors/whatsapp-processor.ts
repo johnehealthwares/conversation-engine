@@ -22,6 +22,7 @@ export class WhatsappProcessor implements ChannelProcessor {
 
   async processInbound(payload: WhatsAppWebhookDto) {
     this.logger.log('Incoming WhatsApp webhook received');
+    this.logger.debug('Payload:', JSON.stringify(payload));
 
     try {
       const statuses = payload?.entry?.[0]?.changes?.[0]?.value?.statuses;
