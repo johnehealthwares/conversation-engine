@@ -54,10 +54,10 @@ export class WorkflowProcessorService {
       return;
     }
 
-    // 1️⃣ Merge payload into state
+    // 1️⃣ Merge event payload into instance state
     const updatedState = {
       ...instance.state,
-      ...(event.payload || {}),
+      ...(event.state || {}),
     };
 
     await this.workflowHistoryService.record(

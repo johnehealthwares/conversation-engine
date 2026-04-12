@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import type { IWorkflowEvent, WorkflowEventContext, WorkflowEventPayload } from 'src/modules/workflow/interfaces/event.interface';
+import type { IWorkflowEvent, WorkflowEventContext, WorkflowEventState } from 'src/modules/workflow/interfaces/event.interface';
 import { WorkflowEventType } from 'src/modules/workflow/entities/step-transition';
 import { EVENT_TRANSPORT } from './event-transport';
 import type { EventTransport } from './event-transport';
@@ -14,14 +14,14 @@ export class EventBusService {
 
   async emit(
     type: WorkflowEventType | string,
-    payload: WorkflowEventPayload,
+    state: WorkflowEventState,
     context: Partial<WorkflowEventContext> = {},
     meta: Partial<IWorkflowEvent['meta']> = {},
   ) {
     const event: IWorkflowEvent = {
       id: randomUUID(),
       type,
-      payload,
+      state,
       context: context as WorkflowEventContext,
       meta: {
         timestamp: new Date().toISOString(),

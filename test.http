@@ -234,5 +234,5 @@ curl -X 'POST' \
   -d '{
   "channelId": "69bd061c11bf835d976c4e2f",
   "from": "08012345679",
-  "text": "2022-10-12"
+  "text": "clinic"
 }'

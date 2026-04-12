@@ -1,24 +1,24 @@
 import { WorkflowEventType } from "../entities/step-transition";
 
-export interface WorkflowEventPayload {
+export interface WorkflowEventState {
   [key: string]: any;
 }
 
 export interface WorkflowEventContext {
   workflowInstanceId: string;
   flowId?: string;
-  conversationId?: string;
   stepId?: string;
   correlationId?: string;
   userId?: string;
   participant?: string;
+  attribute?: string;
   value?: string;
 }
 
 export interface IWorkflowEvent {
   id: string;
   type: WorkflowEventType | string;
-  payload: WorkflowEventPayload;
+  state: WorkflowEventState;
   context: WorkflowEventContext;
   meta: {
     timestamp: string;

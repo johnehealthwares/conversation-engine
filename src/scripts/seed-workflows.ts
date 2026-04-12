@@ -331,7 +331,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: 'WORKFLOW_ANSWER_RECEIVED',
+            event: 'ANSWER_VALID',
             nextStepId: 'authenticate',
           },
         ],
@@ -381,7 +381,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         type: WorkflowStepType.WAIT,
         transitions: [
           {
-            event: WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
+            event: WorkflowEventType.ANSWER_VALID,
             nextStepId: 'router',
           },
         ],
@@ -390,7 +390,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
       // 🔀 ROUTER
       {
         id: 'router',
-        type: WorkflowStepType.ACTION,
+        type: WorkflowStepType.WAIT,
         config: {
         },
         transitions: [
@@ -411,7 +411,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           },
           {
             event: WorkflowEventType.ACTION_COMPLETED,
-            condition: 'context.facilityId && context.locationId && context.clientId && context.appointment_type && context.start_time',
+            condition: 'state.facilityId && state.locationId && state.clientId && state.appointment_type && state.start_time',
             nextStepId: 'await_completion',
           },
           {
@@ -459,7 +459,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
             },
           },
         resultMapping: {
-          conversationId: { path: 'context.conversationId' },
+          flowId: { path: 'context.flowId' },
           options: {
             path: 'step.response.facilities',
             transform: 'map',
@@ -491,7 +491,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_ASK_OPTIONS',
           resultMapping: {
-            conversationId: { path: 'context.conversationId' },
+            flowId: { path: 'context.flowId' },
             question: {
               text: { default: 'Select a facility' },
               options: {
@@ -515,7 +515,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_ASK_OPTIONS',
           resultMapping: {
-            conversationId: { path: 'context.conversationId' },
+            flowId: { path: 'context.flowId' },
             question: {
               text: { default: 'Select a location' },
               options: {
@@ -539,7 +539,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_ASK_OPTIONS',
           resultMapping: {
-            conversationId: { path: 'context.conversationId' },
+            flowId: { path: 'context.flowId' },
             question: {
               text: { default: 'Confirm Patient' },
               options: {
@@ -582,7 +582,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
             },
           },
           resultMapping: {
-            conversationId: { path: 'context.conversationId' },
+            flowId: { path: 'context.flowId' },
             options: {
               path: 'step.response.locations',
               transform: 'map',
@@ -632,7 +632,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
             },
           },
           resultMapping: {
-            conversationId: { path: 'context.conversationId' },
+            flowId: { path: 'context.flowId' },
             options: {
               path: 'step.response.clients',
               transform: 'map',
@@ -699,8 +699,8 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_NO_OPTIONS_FOUND',
           resultMapping: {
-            conversationId: {
-              path: 'context.conversationId',
+            flowId: {
+              path: 'context.flowId',
               validation: {
                 required: true,
                 type: 'string',
@@ -725,8 +725,8 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_NO_OPTIONS_FOUND',
           resultMapping: {
-            conversationId: {
-              path: 'context.conversationId',
+            flowId: {
+              path: 'context.flowId',
               validation: {
                 required: true,
                 type: 'string',
@@ -751,8 +751,8 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_NO_OPTIONS_FOUND',
           resultMapping: {
-            conversationId: {
-              path: 'context.conversationId',
+            flowId: {
+              path: 'context.flowId',
               validation: {
                 required: true,
                 type: 'string',
@@ -813,7 +813,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: 'WORKFLOW_ANSWER_RECEIVED',
+            event: 'ANSWER_VALID',
             nextStepId: 'authenticate_facility_lookup',
           },
         ],
@@ -888,7 +888,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
             },
           },
           resultMapping: {
-            conversationId: { path: 'context.conversationId' },
+            flowId: { path: 'context.flowId' },
             options: {
               path: 'step.response.facilities',
               transform: 'map',
@@ -922,8 +922,8 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_ASK_OPTIONS',
           resultMapping: {
-            conversationId: {
-              path: 'context.conversationId',
+            flowId: {
+              path: 'context.flowId',
               validation: {
                 required: true,
                 type: 'string',
@@ -953,8 +953,8 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_NO_OPTIONS_FOUND',
           resultMapping: {
-            conversationId: {
-              path: 'context.conversationId',
+            flowId: {
+              path: 'context.flowId',
               validation: {
                 required: true,
                 type: 'string',

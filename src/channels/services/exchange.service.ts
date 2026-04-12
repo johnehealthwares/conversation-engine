@@ -248,22 +248,22 @@ export class ExchangeService implements OnModuleInit {
     return exchange._id.equals(mostRecent?._id);
   }
 
-  async processInbound(exchange: Exchange) {
-    const {
-      channelId, recipient, message, questionnaireCode, messageId
-    } = exchange;
-    this.logger.log(
-      `[exchange:process] Routing exchange messageId=${messageId} questionnaire=${questionnaireCode || 'n/a'}`,
-    );
-    await this.conversationService.processInboundMessageFromPhoneNumber(
-      { id: channelId! } as ChannelDomain,
-      recipient!,
-      message,
-      questionnaireCode!,
-      {
-        questionnaireCode,
-        messageId
-      },
-    );
-  }
+  // async processInbound(exchange: Exchange) {
+  //   const {
+  //     channelId, recipient, message, questionnaireCode, messageId
+  //   } = exchange;
+  //   this.logger.log(
+  //     `[exchange:process] Routing exchange messageId=${messageId} questionnaire=${questionnaireCode || 'n/a'}`,
+  //   );
+  //   await this.conversationService.processInboundMessageFromPhoneNumber(
+  //     { id: channelId! } as ChannelDomain,
+  //     recipient!,
+  //     message,
+  //     questionnaireCode!,
+  //     {
+  //       questionnaireCode,
+  //       messageId
+  //     },
+  //   );
+  // }
 }

@@ -10,11 +10,11 @@ export class ConversationWorkflowEventsSubscriber {
 
   @OnEvent(WorkflowEventType.WORKFLOW_ASK_OPTIONS)
   async handleWorkflowAskOptions(event: IWorkflowEvent) {
-    await this.conversationService.handleWorkflowOptions(event.payload);
+    await this.conversationService.handleWorkflowOptions(event.state);
   }
 
   @OnEvent(WorkflowEventType.WORKFLOW_NO_OPTIONS_FOUND)
   async handleWorkflowNoOptionsFound(event: IWorkflowEvent) {
-    await this.conversationService.handleNoResult(event.payload);
+    await this.conversationService.handleNoResult(event.state);
   }
 }

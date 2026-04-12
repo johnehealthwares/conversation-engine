@@ -34,7 +34,7 @@ export class WorkflowEngineService {
     );
 
     const matched = transitions.find((t) =>
-      this.transitionService.evaluateCondition(t.condition!, event.payload),
+      this.transitionService.evaluateCondition(t.condition!, event.state),
     );
         const nestStep = workflow.steps.find((s) => s.id === matched?.toStepId);
     if (!matched || !nestStep) return;

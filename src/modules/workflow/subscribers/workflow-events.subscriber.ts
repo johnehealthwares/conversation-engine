@@ -23,11 +23,6 @@ export class WorkflowEventsSubscriber {
     await this.workflowProcessor.handleEvent(event);
   }
 
-  @OnEvent(WorkflowEventType.WORKFLOW_ANSWER_RECEIVED)
-  async handleWorkflowAnswerReceived(event: IWorkflowEvent) {
-    await this.workflowProcessor.handleEvent(event);
-  }
-
   @OnEvent(WorkflowEventType.ACTION_COMPLETED)
   async handleActionCompleted(event: IWorkflowEvent) {
     await this.workflowProcessor.handleEvent(event);

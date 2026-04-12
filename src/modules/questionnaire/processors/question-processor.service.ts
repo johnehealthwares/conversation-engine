@@ -30,30 +30,28 @@ export enum ProcessAnswerStatus {
 export type ProcessAnswerResult =
   | {
     status: ProcessAnswerStatus.VALIDATION_ERROR;
-    value: string;
-    message: string;
+    rawValue: string;
+    validationMessage: string;
   }
   | {
     status: ProcessAnswerStatus.NEXT_QUESTION;
     nextQuestion: QuestionDomain;
-    processedAnswer: unknown;
-    metadata?: Record<string, any>;
+    processedValue: string;
+    rawValue: string;
   }
   | {
     status: ProcessAnswerStatus.COMPLETED;
-    processedAnswer: unknown;
-    metadata?: Record<string, any>;
+    processedValue: string;
+    rawValue: string;
   }
   | {
     status: ProcessAnswerStatus.WORKFLOW_HANDLING;
-    value: string;
+    nextQuestion: QuestionDomain;
+    rawValue: string;
     metadata?: Record<string, any>;
   } | {
     status: ProcessAnswerStatus.CONVERSATION_NOT_FOUND;
-    processedAnswer: unknown;
-    message: string;
-    nextQuestion?: QuestionDomain;
-    metadata?: Record<string, any>;
+    rawValue: string;
   };
 
 
@@ -100,9 +98,9 @@ export class QuestionProcessorService {
 
     if (validationMessage) {
       return {
-        value: message.trim(),
+        rawValue: message.trim(),
         status: ProcessAnswerStatus.VALIDATION_ERROR,
-        message: validationMessage,
+        validationMessage,
       };
     }
 
@@ -118,21 +116,21 @@ export class QuestionProcessorService {
     }
 
 
-    // ✅ 3. STORE METADATA (important for API flows)
-    if (modeResult.metadata) {
-      conversation.context = {
-        ...conversation.context,
-        ...modeResult.metadata,
-      };
-    }
+    // ✅ 3. STORE METADATA (important for API flows) - TODO: BE intentional with this
+    // if (modeResult.metadata) {
+    //   conversation.context = {
+    //     ...conversation.context,
+    //     ...modeResult.metadata,
+    //   };
+    // }
 
     // ✅ 4. RESOLVE NEXT QUESTION
-    if (modeResult.status === ProcessAnswerStatus.NEXT_QUESTION) {
-      this.resolveNextQuestion(
-        conversation,
-        question
-      );
-    }
+    // if (modeResult.status === ProcessAnswerStatus.NEXT_QUESTION) {
+    //   this.resolveNextQuestion(
+    //     conversation,
+    //     question
+    //   );
+    // }
 
 
     return modeResult;
@@ -245,42 +243,43 @@ export class QuestionProcessorService {
   private async processByMode(
     conversation: ConversationDomain,
     question: QuestionDomain,
-    message: string,
+    rawValue: string,
   ): Promise<ProcessAnswerResult> {
 
     // ✅ OPTION MODE
     if (question.processMode === ProcessMode.OPTION_PROCESSED) {
       const selected = question.options?.find(
         (o) =>
-          o.key.toLowerCase() === message.toLowerCase() ||
-          o.label.toLowerCase() === message.toLowerCase(),
+          o.key.toLowerCase() === rawValue.toLowerCase() ||
+          o.label.toLowerCase() === rawValue.toLowerCase(),
       );
 
       if (!selected) {
         return {
           status: ProcessAnswerStatus.VALIDATION_ERROR,
-          value: message,
-          message: 'Invalid option. ' + this.askQuestion(question),
+          rawValue,
+          validationMessage: 'Invalid option. ' + this.askQuestion(question),
         };
       }
 
       return {
         status: ProcessAnswerStatus.NEXT_QUESTION,
         nextQuestion: this.resolveNextQuestion(conversation, question, selected.jumpToQuestionId)!,
-        processedAnswer: selected.value,
+        processedValue: selected.value,
+        rawValue,
       };
     }
 
     // ✅ AI MODE
     if (question.processMode === ProcessMode.AI_PROCESSED) {
       const ai = await this.aiProcessor.analyze(
-        message,
+        rawValue,
         question.aiConfig as any,
       );
       return {
         status: ProcessAnswerStatus.NEXT_QUESTION,
-        processedAnswer: ai.structuredResult,
-        metadata: { confidence: ai.confidence },
+        rawValue,
+        processedValue: ai.structuredResult.value,
         nextQuestion: this.resolveNextQuestion(conversation, question)!,
       };
     }
@@ -288,34 +287,35 @@ export class QuestionProcessorService {
     if (question.processMode === ProcessMode.WORKFLOW_PROCESSED) {
       return {
         status: ProcessAnswerStatus.WORKFLOW_HANDLING,
-        value: message,
+        rawValue,
+        nextQuestion: this.resolveNextQuestion(conversation, question)!,
         metadata: {
           workflow: {
             triggerWorkflow: true,
             currentQuestionId: question.id,
             nextQuestionId: question.nextQuestionId,
-            query: message,
+            query: rawValue,
           }
         },
       }
     }
 
     // ✅ DEFAULT PROCESSING
-    const processedAnswer = message.trim();
+    const processedValue = rawValue.trim();
 
     // 🚀 API NAVIGATION (delegated)
-    if ( question.processMode === ProcessMode.API_PROCESSED) {
+    if (question.processMode === ProcessMode.API_PROCESSED) {
       const apiResult = await this.apiProcessor.execute(
         question.apiNavigation!,
-        message,
+        processedValue,
         conversation,
       );
 
       return {
         status: ProcessAnswerStatus.NEXT_QUESTION,
         nextQuestion: this.resolveNextQuestion(conversation, question, apiResult.nextQuestionId)!,
-        processedAnswer,
-        metadata: apiResult.metadata,
+        processedValue,
+        rawValue,
       };
     }
 
@@ -325,16 +325,16 @@ export class QuestionProcessorService {
     if (!nextQuestion) {
       return {
         status: ProcessAnswerStatus.COMPLETED,
-        processedAnswer,
-        metadata: {},
+        processedValue,
+        rawValue,
       };
     }
 
     return {
       status: ProcessAnswerStatus.NEXT_QUESTION,
       nextQuestion,
-      processedAnswer,
-      metadata: {},
+      processedValue,
+      rawValue,
     };
   }
 
@@ -351,6 +351,10 @@ export class QuestionProcessorService {
     // 🔹 explicit jump
     if (overrideId) {
       return questions.find((q) => q.id === overrideId) || null;
+    }
+    
+    if(current.nextQuestionId){
+      return questions.find((q) => q.id === current.nextQuestionId) || null;
     }
 
     // 🔹 fallback sequential

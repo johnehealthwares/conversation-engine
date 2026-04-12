@@ -281,7 +281,7 @@ export class StepRunnerService {
       ? this.extractMappedFields(step.config.resultMapping, {
         ...updatedState,
         step: updatedStepState,
-        trigger: triggerEvent.payload,
+        trigger: triggerEvent.state,
         context: triggerEvent.context,
         metadata: result.metadata,
       })
@@ -324,7 +324,6 @@ export class StepRunnerService {
       {
         workflowInstanceId: instance.id,
         flowId: instance.flowId,
-        conversationId: instance.flowId,
         stepId: step.id,
         correlationId: triggerEvent?.context?.correlationId,
       },
@@ -339,7 +338,6 @@ export class StepRunnerService {
         {
           workflowInstanceId: instance.id,
           flowId: instance.flowId,
-          conversationId: instance.flowId,
           stepId: step.id,
           correlationId: triggerEvent?.context?.correlationId,
         },

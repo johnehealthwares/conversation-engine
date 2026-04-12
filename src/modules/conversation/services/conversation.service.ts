@@ -490,227 +490,218 @@ export class ConversationService {
         context: { questionnaireCode, channel, participant, message, ...context, conversationId: conversation.id }
       };
     }
-    if (conversation?.id) {
-      if (conversation.context?.workflow?.pendingQuestion) {
-        return this.handleWorkflowResponse(
-          conversation,
-          participant,
-          message,
-          context,
-        );
-      }
-
-      const currentQuestion = await this.getCurrentQuestion(conversation);
-      this.logger.debug(
-        `[flow:question] conversation=${conversation.id} current=${currentQuestion.attribute} message=${String(message).slice(0, 60)}`,
-      );
-      if (message === questionnaire?.endPhrase) {
-        this.logger.log(
-          `[flow:stop] conversation=${conversation.id} received end phrase=${questionnaire?.endPhrase}`,
-        );
-        await this.stopConversation(conversation.id)
-        const resent = false;
-        const hasLink = false;
-        await this.sendMessage(conversation!, 'You have stopped this conversation, Thank you.', hasLink, resent);
-        // ✅ EVENT 2️⃣ -Conversation Stopped
-
-        const payload = {
-          ...(await this.responseService.getValidResponsesMapByAttribute(
-            conversation.id!,
-          )),
-          ...(conversation.context || {}),
-        };
-        await this.workflowProcessor.conversationStopped(
-          conversation.id!,
-          participant.phone!,
-          currentQuestion.attribute,
-          message,
-          payload,
-        );
-
-        return {
-          responded: true,
-          reason: ProcessAnswerStatus.COMPLETED,
-          action: ConversationReponseAction.STOPPED_CONVERSATION,
-          message: "Conversation stopped",
-          context: { questionnaireCode, channel, participant, message, ...context }
-        };
-      }
-      if (conversation.status === ConversationStatus.COMPLETED) {
-        this.logger.verbose?.(
-          `[flow:completed] conversation=${conversation.id} already completed. Sending terminal acknowledgement.`,
-        );
-        const resent = false;
-        const hasLink = false;
-        await this.sendMessage(conversation!, "Thank you.", hasLink, resent)
-        return {
-          responded: true,
-          reason: ProcessAnswerStatus.COMPLETED,
-          action: ConversationReponseAction.COMPLETED_CONVERSATION,
-          message: "Conversation completed",
-          context: { questionnaireCode, channel, participant, message, ...context }
-        };
-      }
-
-      const processingResult = await this.questionProcessor.processAnswer(
+    if (!conversation || !conversation?.id) {
+      return {
+        responded: true,
+        reason: ProcessAnswerStatus.CONVERSATION_NOT_FOUND_FOR_SOME_REASON,
+        action: ConversationReponseAction.CONVERSATION_NOT_FOUND,
+        message: "Conversation not found",
+        context: { questionnaireCode, channel, participant, message, ...context }
+      };
+    }
+    if (conversation.context?.workflow?.pendingQuestion) {
+      return this.handleWorkflowResponse(
         conversation,
-        currentQuestion,
+        participant,
         message,
+        context,
       );
+    }
 
-      const validInboundResponse =
-        processingResult.status !== ProcessAnswerStatus.VALIDATION_ERROR &&
-        processingResult.status !== ProcessAnswerStatus.WORKFLOW_HANDLING;
+    const currentQuestion = await this.getCurrentQuestion(conversation);
+    this.logger.debug(
+      `[flow:question] conversation=${conversation.id} current=${currentQuestion.attribute} message=${String(message).slice(0, 60)}`,
+    );
+    if (message === questionnaire?.endPhrase) {
+      this.logger.log(
+        `[flow:stop] conversation=${conversation.id} received end phrase=${questionnaire?.endPhrase}`,
+      );
+      await this.stopConversation(conversation.id)
+      const resent = false;
+      const hasLink = false;
+      await this.sendMessage(conversation!, 'You have stopped this conversation, Thank you.', hasLink, resent);
+      // ✅ EVENT 2️⃣ -Conversation Stopped
 
-      await this.responseService.saveInboundResponse(
+      const payload = {
+        ...(await this.responseService.getValidResponsesMapByAttribute(
+          conversation.id!,
+        )),
+        ...(conversation.context || {}),
+      };
+      await this.workflowProcessor.conversationStopped(
         conversation.id!,
-        conversation.participantId,
-        currentQuestion.id!,
+        participant.phone!,
         currentQuestion.attribute,
         message,
-        validInboundResponse,
-        validInboundResponse ? (processingResult as any).processedAnswer : undefined,
-        processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING
-          ? {
-            workflowPendingSelection: true,
-            query: processingResult.value,
-          }
-          : undefined,
+        payload,
       );
 
-      if (processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING) {
-        await this.conversationRepository.save(conversation.id!, {
-          context: {
-            ...conversation.context,
-            workflow: {
-              step: 'OPTION_KEY_SELECTION',
-              event: WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
-              query: processingResult.value,
-              resumeQuestionId: currentQuestion.id,
-              sourceQuestion: currentQuestion,
-            },
-          },
-          state: ConversationState.PROCESSING,
-        });
+      return {
+        responded: true,
+        reason: ProcessAnswerStatus.COMPLETED,
+        action: ConversationReponseAction.STOPPED_CONVERSATION,
+        message: "Conversation stopped",
+        context: { questionnaireCode, channel, participant, message, ...context }
+      };
+    }
+    if (conversation.status === ConversationStatus.COMPLETED) {
+      this.logger.verbose?.(
+        `[flow:completed] conversation=${conversation.id} already completed. Sending terminal acknowledgement.`,
+      );
+      const resent = false;
+      const hasLink = false;
+      await this.sendMessage(conversation!, "Thank you.", hasLink, resent)
+      return {
+        responded: true,
+        reason: ProcessAnswerStatus.COMPLETED,
+        action: ConversationReponseAction.COMPLETED_CONVERSATION,
+        message: "Conversation completed",
+        context: { questionnaireCode, channel, participant, message, ...context }
+      };
+    }
 
-        const workflowPayload = {
-          ...(await this.responseService.getValidResponsesMapByAttribute(
-            conversation.id!,
-          )),
-          ...(conversation.context || {}),
-          [currentQuestion.attribute]: processingResult.value,
-          answerValue: processingResult.value,
-          questionId: currentQuestion.id,
-          questionAttribute: currentQuestion.attribute,
-          ...(processingResult.metadata || {}),
-        };
+    const processingResult = await this.questionProcessor.processAnswer(
+      conversation,
+      currentQuestion,
+      message,
+    );
 
-        await this.workflowProcessor.workflowQuestionAnswered(
-          conversation.id,
-          participant.phone!,
-          currentQuestion.attribute,
-          processingResult.value,
-          workflowPayload,
-        );
+    const validInboundResponse =
+      processingResult.status !== ProcessAnswerStatus.VALIDATION_ERROR 
 
-        return {
-          responded: true,
-          reason: processingResult.status,
-          action: ConversationReponseAction.PROCESSING_WORKFLOW_ANSWER,
-          message,
-          context: { questionnaireCode, channel, participant, message, ...context }
-        };
-      }
+    await this.responseService.saveInboundResponse(
+      conversation.id!,
+      conversation.participantId,
+      currentQuestion.id!,
+      currentQuestion.attribute,
+      message,
+      validInboundResponse,
+      validInboundResponse ? (processingResult as any).processedAnswer : undefined,
+      processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING
+        ? {
+          workflowPendingSelection: true,
+          query: processingResult.rawValue,
+        }
+        : undefined,
+    );
 
-      if (processingResult.status === ProcessAnswerStatus.VALIDATION_ERROR) {
-        this.logger.warn(
-          `[flow:invalid] conversation=${conversation.id} question=${currentQuestion.attribute}`,
-        );
-        const resent = true;
-        await this.sendMessage(
-          conversation,
-          processingResult.message,
-          Boolean(currentQuestion.hasLink),
-          resent,
-          currentQuestion.id,
-          currentQuestion.attribute,
-        );
-        // ✅ EVENT 3️⃣ -Answer Invalid 
+    if (validInboundResponse) {
+      // ✅ EVENT 5️⃣ -Answer Valid
+      const state = {
+        ...(await this.responseService.getValidResponsesMapByAttribute(
+          conversation.id!,
+        )),
+        ...(conversation.context || {}),
+      };
+      await this.workflowProcessor.answerValid(
+        conversation.id,
+        participant.phone!,
+        currentQuestion.attribute,
+        processingResult.rawValue,
+        state,
+      );
+    }
 
-        const payload = {
-          ...(await this.responseService.getValidResponsesMapByAttribute(
-            conversation.id!,
-          )),
-          ...(conversation.context || {}),
-        };
-        await this.workflowProcessor.answerInValid(
-          conversation.id,
-          participant.phone!,
-          currentQuestion.attribute,
-          processingResult.value,
-          payload,
-        );
-        return {
-          responded: true,
-          reason: processingResult.status,
-          action: ConversationReponseAction.REPLIED_CONVERSATION,
-          message: processingResult.message,
-          context: { questionnaireCode, channel, participant, message, ...context }
-        };
-      }
 
-      if (processingResult.status === ProcessAnswerStatus.COMPLETED) {
-        return this.completeConversationFromAnswer(
-          conversation,
-          participant,
-          currentQuestion,
-          String(processingResult.processedAnswer ?? message),
-          { questionnaireCode, channel, participant, message, ...context },
-          conversation.context || {},
-        );
-      }
+    if (processingResult.status === ProcessAnswerStatus.VALIDATION_ERROR) {
+      this.logger.warn(
+        `[flow:invalid] conversation=${conversation.id} question=${currentQuestion.attribute}`,
+      );
+      const resent = true;
+      await this.sendMessage(
+        conversation,
+        processingResult.validationMessage,
+        Boolean(currentQuestion.hasLink),
+        resent,
+        currentQuestion.id,
+        currentQuestion.attribute,
+      );
+      // ✅ EVENT 3️⃣ -Answer Invalid 
 
+      const payload = {
+        ...(await this.responseService.getValidResponsesMapByAttribute(
+          conversation.id!,
+        )),
+        ...(conversation.context || {}),
+      };
+      await this.workflowProcessor.answerInValid(
+        conversation.id,
+        participant.phone!,
+        currentQuestion.attribute,
+        processingResult.rawValue,
+        payload,
+      );
+      return {
+        responded: true,
+        reason: processingResult.status,
+        action: ConversationReponseAction.REPLIED_CONVERSATION,
+        message: processingResult.validationMessage,
+        context: { questionnaireCode, channel, participant, message, ...context }
+      };
+    }
+
+    if (processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING) {
+      // await this.conversationRepository.save(conversation.id!, {
+      //   context: {
+      //     ...conversation.context,
+      //     workflow: {
+      //        ...conversation?.context?.workflow,
+      //       step: 'OPTION_KEY_SELECTION',
+      //       event: WorkflowEventType.ANSWER_VALID,
+      //       query: processingResult.rawValue,
+      //       resumeQuestionId: currentQuestion.id,
+      //       sourceQuestion: currentQuestion,
+      //     },
+      //   },
+      //   state: ConversationState.,
+      // });
+
+      return {
+        responded: true,
+        reason: processingResult.status,
+        action: ConversationReponseAction.PROCESSING_WORKFLOW_ANSWER,
+        message,
+        context: { questionnaireCode, channel, participant, message, ...context }
+      };
+    }
+
+    if (processingResult.status === ProcessAnswerStatus.NEXT_QUESTION) {
       const updatedConversation = await this.conversationRepository.save(
         conversation.id,
         {
-          context: conversation.context,
           state: ConversationState.PROCESSING,
           currentQuestionId: processingResult?.nextQuestion?.id,
         },
       );
-      if (processingResult.status === ProcessAnswerStatus.NEXT_QUESTION) {
-        await this.sendQuestion(
-          updatedConversation,
-          processingResult.nextQuestion,
-          currentQuestion.id === processingResult.nextQuestion.id
-        );
-        this.logger.debug(
-          `[flow:advance] conversation=${conversation.id} next=${processingResult.nextQuestion.attribute}`,
-        );
-        // ✅ EVENT 5️⃣ -Answer Valid
-        const payload = {
-          ...(await this.responseService.getValidResponsesMapByAttribute(
-            conversation.id!,
-          )),
-          ...(conversation.context || {}),
-        };
-        await this.workflowProcessor.answerValid(
-          conversation.id,
-          participant.phone!,
-          currentQuestion.attribute,
-          processingResult.processedAnswer as string,
-          payload,
-        );
-
-        return {
-          responded: true,
-          reason: processingResult.status,
-          action: ConversationReponseAction.REPLIED_CONVERSATION,
-          message: processingResult.status,
-          context: { questionnaireCode, channel, participant, message, ...context }
-        };
-      }
+      await this.sendQuestion(
+        updatedConversation,
+        processingResult.nextQuestion,
+        currentQuestion.id === processingResult.nextQuestion.id
+      );
+      this.logger.debug(
+        `[flow:advance] conversation=${conversation.id} next=${processingResult.nextQuestion.attribute}`,
+      );
+      return {
+        responded: true,
+        reason: processingResult.status,
+        action: ConversationReponseAction.REPLIED_CONVERSATION,
+        message: processingResult.status,
+        context: { questionnaireCode, channel, participant, message, ...context }
+      };
     }
+
+    if (processingResult.status === ProcessAnswerStatus.COMPLETED) {
+      return this.completeConversationFromAnswer(
+        conversation,
+        participant,
+        currentQuestion,
+        String(processingResult.processedValue ?? message),
+        { questionnaireCode, channel, participant, message, ...context },
+        conversation.context || {},
+      );
+    }
+
+    //if (processingResult.status === ProcessAnswerStatus.CONVERSATION_NOT_FOUND) {
     return {
       responded: true,
       reason: ProcessAnswerStatus.CONVERSATION_NOT_FOUND_FOR_SOME_REASON,
@@ -718,7 +709,7 @@ export class ConversationService {
       message: "Conversation not found",
       context: { questionnaireCode, channel, participant, message, ...context }
     };
-
+    //}
 
   }
 
@@ -729,11 +720,14 @@ export class ConversationService {
     context: MessageContext,
   ): Promise<ConversationResponse> {
     const wf = conversation.context.workflow;
-    const question = wf.pendingQuestion;
     const sourceQuestion =
       wf.sourceQuestion ||
       conversation.questions?.find((item) => item.id === wf.resumeQuestionId);
-
+    
+    const question = {
+      ...sourceQuestion,
+      ...wf.pendingQuestion
+    } 
     const result = await this.questionProcessor.processAnswer(
       conversation,
       question,
@@ -743,7 +737,7 @@ export class ConversationService {
     if (result.status === ProcessAnswerStatus.VALIDATION_ERROR) {
       await this.sendMessage(
         conversation,
-        result.message,
+        result.rawValue,
         false,
         true,
         question.id,
@@ -754,21 +748,16 @@ export class ConversationService {
         responded: true,
         reason: result.status,
         action: ConversationReponseAction.INVALID_ANSWER,
-        message: result.message,
+        message: result.rawValue,
         context: { questionnaireCode: conversation.questionnaireId, participant, message, ...context }
       };
     }
 
-    if (wf.step === 'OPTION_KEY_SELECTION') {
+    if (result.status === ProcessAnswerStatus.NEXT_QUESTION) {
       if (!sourceQuestion?.id) {
         throw new NotFoundException('Workflow source question not found');
       }
-
-      const processedAnswer = String((result as any).processedAnswer ?? message.trim());
-      const nextQuestion = this.resolveNextQuestionFromConversation(
-        conversation,
-        sourceQuestion,
-      );
+      const nextQuestion = result.nextQuestion
       const cleanedContext = {
         ...conversation.context,
         workflow: null,
@@ -781,7 +770,7 @@ export class ConversationService {
         sourceQuestion.attribute,
         message,
         true,
-        processedAnswer,
+        result.processedValue,
         {
           workflowSelection: {
             query: wf.query,
@@ -803,7 +792,7 @@ export class ConversationService {
           updated,
           participant,
           sourceQuestion,
-          processedAnswer,
+          result.processedValue,
           context,
           cleanedContext,
         );
@@ -829,7 +818,7 @@ export class ConversationService {
   }
 
   async handleWorkflowOptions(payload) {
-    const { conversationId, question, metadata } = payload;
+    const { flowId: conversationId, question, metadata } = payload;
 
     const conversation = await this.findOne(conversationId);
     const sourceQuestion =
@@ -862,19 +851,18 @@ export class ConversationService {
       updatedAt: new Date(),
     };
 
-    await this.conversationRepository.save(conversationId, {
-      context: {
+    const context = {
         ...conversation.context,
         workflow: {
-          ...(conversation.context.workflow || {}),
+          ...(conversation?.context?.workflow || {}),
           event: WorkflowEventType.WORKFLOW_ASK_OPTIONS,
           pendingQuestion,
           metadata,
           resumeQuestionId: conversation.currentQuestionId,
           sourceQuestion,
         },
-      },
-    });
+      };
+    const response = await this.conversationRepository.save(conversationId, {  context  });
 
     await this.sendQuestion(conversation, pendingQuestion, false);
   }
@@ -903,6 +891,7 @@ export class ConversationService {
   async stopConversation(conversationId: string) {
     return this.conversationRepository.save(conversationId, {
       status: ConversationStatus.STOPPED,
+      state: ConversationState.INCOMPLETE,
       endedAt: new Date(),
     });
   }
