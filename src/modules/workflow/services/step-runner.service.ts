@@ -23,7 +23,7 @@ export class StepRunnerService {
     private readonly actionLogRepository: Model<ActionLog>,
     private readonly workflowInstanceService: WorkflowInstanceService,
     private readonly workflowHistoryService: WorkflowHistoryService,
-  ) {}
+  ) { }
 
   async runStep(
     triggerEvent: IWorkflowEvent,
@@ -118,7 +118,7 @@ export class StepRunnerService {
 
     const result: Record<string, any> = {};
 
-    for (const key in mapping) {
+    for (const key in mapping) { 
       const map = mapping[key];
 
       const isMappingEntry =
@@ -146,6 +146,17 @@ export class StepRunnerService {
         if (map.transform === 'number') value = Number(value);
         if (map.transform === 'string' && value != null) value = String(value);
         if (map.transform === 'boolean') value = Boolean(value);
+        if (map.transform === 'map') {
+
+          if (!Array.isArray(value)) return map.default ?? [];
+
+          value = value.map((item, index) => ({
+            key: map.map.key === 'index'
+              ? String(index + 1) : this.getValueByPath(item, map.map.key),
+            label: this.getValueByPath(item, map.map.label),
+            value: this.getValueByPath(item, map.map.value),
+          }));
+        }
 
         this.validateMappedValue(key, value, map.validation);
         result[key] = value;
@@ -230,25 +241,25 @@ export class StepRunnerService {
       `Action completed (success=${result.success}, duration=${durationMs}ms)`,
     );
 
-    let extracted = {};
-    if (step.config?.responseBodyMapping) {
-      extracted = this.extractMappedFields(step.config.responseBodyMapping, result.data);
+    let response = {};
+    if (result.success && step.config?.responseBodyMapping) {
+      response = this.extractMappedFields(step.config.responseBodyMapping, result.data);
     } else if (result.data && typeof result.data === 'object') {
-      extracted = result.data;
+      response = result.data;
     }
 
-    this.logger.debug(`Extracted data: ${JSON.stringify(extracted)}`);
+    this.logger.debug(`Extracted data: ${JSON.stringify(response)}`);
 
     const lastAction = {
       stepId: step.id,
-      data: extracted,
+      data: response,
       success: result.success,
       errorType: result.metadata?.errorType,
       attempts: result.metadata?.attempts,
     };
 
     const updatedStepState = {
-      data: extracted,
+      response,
       result: null as Record<string, any> | null,
       success: result.success,
       errorType: result.metadata?.errorType,
@@ -268,14 +279,13 @@ export class StepRunnerService {
 
     const eventPayload = step.config?.resultMapping
       ? this.extractMappedFields(step.config.resultMapping, {
-          ...updatedState,
-          response: result.data,
-          step: updatedStepState,
-          trigger: triggerEvent.payload,
-          context: triggerEvent.context,
-          metadata: result.metadata,
-        })
-      : extracted;
+        ...updatedState,
+        step: updatedStepState,
+        trigger: triggerEvent.payload,
+        context: triggerEvent.context,
+        metadata: result.metadata,
+      })
+      : response;
 
     updatedState[step.id] = {
       ...updatedStepState,

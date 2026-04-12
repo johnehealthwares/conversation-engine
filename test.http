@@ -178,3 +178,61 @@ curl -v -X POST https://conversation-engine-5epg.onrender.com/api/channels/send-
   "from": "23412345434",
   "text": "2010-12-12"
 }'
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "08012345679",
+  "text": "WF_APPOINTMENT_Q"
+}'
+
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "08012345679",
+  "text": "new"
+}'
+
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "08012345679",
+  "text": "Tristate"
+}'
+
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "08012345679",
+  "text": "2"
+}'
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "08012345679",
+  "text": "2022-10-12"
+}'

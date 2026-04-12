@@ -18,6 +18,11 @@ export type WorkflowDataMappingEntry =
       default?: any;
       transform?: 'number' | 'string' | 'boolean';
       validation?: WorkflowDataMappingValidation;
+      map?: {
+        key: string;
+        label: string;
+        value: string;
+      };
       dependencies?: string[];
        [key: string]: any; // for nested objects
     };

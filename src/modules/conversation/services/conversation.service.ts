@@ -40,6 +40,7 @@ import { FilterConversationDto } from '../controllers/dto/filter-conversation.dt
 import { ProcessConversationResponseDto } from '../controllers/dto/process-conversation-response.dto';
 import { ChannelService } from '../../../channels/services/channel.service';
 import { WorkflowEventType } from 'src/modules/workflow/entities/step-transition';
+import { IntentService } from './intent.service';
 
 
 @Injectable()
@@ -56,6 +57,7 @@ export class ConversationService {
     private readonly channelService: ChannelService,
     private readonly questionProcessor: QuestionProcessorService,
     private readonly workflowProcessor: WorkflowProcessorService,
+    private readonly intentService: IntentService,
   ) { }
 
   async create(
@@ -268,11 +270,12 @@ export class ConversationService {
     );
   }
 
-  private async sendInitMessage(channelId: string, participant: ParticipantDomain) {
+  private async sendInitMessage(channelId: string, participant: ParticipantDomain, message?: string) {
     const resentMessage = false
     const sender = await this.senderFactory.getSender(channelId);
     const questionnaires = await this.questionnaireService.getInitQuestionnaires();
-    const message = `Please select an action \n${(questionnaires).map(q => `${q.code}: ${q.name.substring(0, 23)}`).join('\n')}`
+    if (!message)
+      message = `Please select an action \n${(questionnaires).map(q => `${q.code}: ${q.name.substring(0, 23)}`).join('\n')}`
     const response = await sender.sendMessage(participant, 'Start', message, { resentMessage });
     return response;
   }
@@ -411,20 +414,37 @@ export class ConversationService {
       `[flow:start] participant=${participant.id} channel=${channel.id} questionnaire=${questionnaireCode || 'n/a'}`,
     );
     let conversation = await this.conversationRepository.findActiveByParticipantId(participant.id);
-    const questionnaire: QuestionnaireDomain | null = conversation ? await this.questionnaireService.findOne(conversation.questionnaireId) : await this.questionnaireService.findByCode(questionnaireCode);
+    let questionnaire: QuestionnaireDomain | null = conversation ? await this.questionnaireService.findOne(conversation.questionnaireId) : await this.questionnaireService.findByCode(questionnaireCode);
     //Scenario 1 : Input that can't be processed was provided
     if (!conversation && !questionnaire) {
       this.logger.warn(
-        `[flow:init] No active conversation or questionnaire found for code=${questionnaireCode || 'n/a'}. Sending init message.`,
+        `[flow:init] No active conversation or questionnaire found for code=${questionnaireCode || 'n/a'}. Finding intent or Sending init message.`,
       );
-      await this.sendInitMessage(channel.id, participant);
-      return {
-        responded: false,
-        reason: questionnaireCode ? ProcessAnswerStatus.CONVERSATION_NOT_FOUND : ProcessAnswerStatus.QUESTIONNAIRE_CODE_NOT_PROVIDED,
-        action: ConversationReponseAction.SENT_INIT_MESSAGE,
-        message: "Please select an action",
-        context: { questionnaireCode, }
-      };
+      try {
+        const intentResponse = await this.intentService.classify(message)
+        if (!intentResponse.intent || intentResponse.intent === 'UNKNOWN' || Number(intentResponse.confidence) < 0.5) {
+          await this.sendInitMessage(channel.id, participant, intentResponse.response);
+          return {
+            responded: false,
+            reason: questionnaireCode ? ProcessAnswerStatus.CONVERSATION_NOT_FOUND : ProcessAnswerStatus.QUESTIONNAIRE_CODE_NOT_PROVIDED,
+            action: ConversationReponseAction.SENT_INIT_MESSAGE,
+            message: "Please select an action",
+            context: { questionnaireCode, }
+          };
+        }
+        questionnaire = await this.questionnaireService.findByCode(intentResponse.intent);
+
+      } catch {
+        await this.sendInitMessage(channel.id, participant);
+        return {
+          responded: false,
+          reason: questionnaireCode ? ProcessAnswerStatus.CONVERSATION_NOT_FOUND : ProcessAnswerStatus.QUESTIONNAIRE_CODE_NOT_PROVIDED,
+          action: ConversationReponseAction.SENT_INIT_MESSAGE,
+          message: "Please select an action",
+          context: { questionnaireCode, }
+        };
+      }
+
     }
 
     //Scenario 2 : Questionnaire Found but no conversation, start new conversation
@@ -552,9 +572,9 @@ export class ConversationService {
         validInboundResponse ? (processingResult as any).processedAnswer : undefined,
         processingResult.status === ProcessAnswerStatus.WORKFLOW_HANDLING
           ? {
-              workflowPendingSelection: true,
-              query: processingResult.value,
-            }
+            workflowPendingSelection: true,
+            query: processingResult.value,
+          }
           : undefined,
       );
 
@@ -815,27 +835,7 @@ export class ConversationService {
     const sourceQuestion =
       conversation.context?.workflow?.sourceQuestion ||
       conversation.questions?.find((item) => item.id === conversation.currentQuestionId);
-    const normalizedOptions = (question.options || []).map((option, index) => ({
-      key:
-        `${option.key + 1}`,
-        // option?.[metadata?.optionKeyField || 'key'] ??
-        // option?.id ??
-        // option?._id ??
-        // String(index + 1),
-      label:
-        option.label ??
-        option?.[metadata?.optionLabelField || 'label'] ??
-        option?.facilityName ??
-        option?.name ??
-        option?.value ??
-        `Option ${index + 1}`,
-      value:
-        option.value ??
-        option?.[metadata?.optionValueField || 'value'] ??
-        option?.id ??
-        option?._id ??
-        String(index + 1),
-    }));
+    const normalizedOptions = question.options || [];
     const pendingQuestion: QuestionDomain = {
       id: question.id || new Types.ObjectId().toString(),
       questionnaireId: conversation.questionnaireId,

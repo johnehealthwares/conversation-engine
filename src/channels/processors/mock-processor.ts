@@ -29,22 +29,22 @@ export class MockProcessor implements ChannelProcessor {
       sender: from,
       message: text,
       messageId,
-      questionnaireCode,
+      questionnaireCode: text,
       metadata: { source: 'mock_webhook' },
       rawPayload: payload,
     });
 
-    return this.conversationService.processInboundMessageFromPhoneNumber(
-      channel,
-      from,
-      text,
-      questionnaireCode || text,
-      {
-        channelId,
-        channelType: ChannelType.MOCK,
-        questionnaireCode: questionnaireCode || text,
-        messageId,
-      },
-    );
+    // return this.conversationService.processInboundMessageFromPhoneNumber(
+    //   channel,
+    //   from,
+    //   text,
+    //   questionnaireCode || text,
+    //   {
+    //     channelId,
+    //     channelType: ChannelType.MOCK,
+    //     questionnaireCode: questionnaireCode || text,
+    //     messageId,
+    //   },
+    // );
   }
 }

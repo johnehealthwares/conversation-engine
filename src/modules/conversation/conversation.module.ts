@@ -18,6 +18,8 @@ import { Question, QuestionSchema } from '../questionnaire/schemas/question.sche
 import { Questionnaire, QuestionnaireSchema } from '../questionnaire/schemas/questionnaire.schema';
 import { SharedEventBusModule } from 'src/shared/events';
 import { ConversationWorkflowEventsSubscriber } from './subscribers/workflow-events.subscriber';
+import { IntentService } from './services/intent.service';
+import { HttpModule, HttpService } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -32,16 +34,21 @@ import { ConversationWorkflowEventsSubscriber } from './subscribers/workflow-eve
       { name: Question.name, schema: QuestionSchema },
       { name: Questionnaire.name, schema: QuestionnaireSchema },
     ]),
+    HttpModule.register({
+      timeout: 5000,
+      maxRedirects: 5,
+    }),
   ],
   controllers: [ConversationController, ParticipantController],
   providers: [
+    IntentService,
     ConversationService,
     ConversationRepository,
     ResponseService,
     ParticipantService,
     ParticipantRepository,
     WorkflowProcessorService,
-    ConversationWorkflowEventsSubscriber,
+    ConversationWorkflowEventsSubscriber
   ],
   exports: [ConversationService, ParticipantService, ResponseService],
 })

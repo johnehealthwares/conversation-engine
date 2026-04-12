@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { WorkflowEventType } from '../entities/step-transition';
 import { WorkflowDataMapping, WorkflowDataMappingEntry, WorkflowStepConfig } from '../entities/workflow-step';
+import { Logger } from '@nestjs/common';
 
 export type ActionResult = {
   success: boolean;
@@ -30,10 +31,10 @@ function getValueByPath(obj: Record<string, any>, path: string) {
 }
 
 function applyTransform(value: any, transform?: 'string' | 'number' | 'boolean' | { prepend?: string; append?: string }) {
-  
+
   if (value == null || transform == null) return value;
 
- 
+
   switch (transform) {
     case 'number':
       return Number(value);
@@ -78,6 +79,10 @@ function mapData(source: Record<string, any>, mapping?: WorkflowDataMapping): Re
       result[key] = value;
       continue;
     }
+    if(entry.default && !entry.path){
+      result[key] = entry.default;
+      continue;
+    }
 
     // 4️⃣ Nested object (child nodes)
     result[key] = mapData(source, entry);
@@ -90,7 +95,7 @@ export async function handleHttpPost(
   config: WorkflowStepConfig,
   state: Record<string, any>
 ): Promise<ActionResult> {
-    return handleHttp(config, state, 'POST');
+  return handleHttp(config, state, 'POST');
 }
 
 
@@ -98,7 +103,7 @@ export async function handleHttpGet(
   config: WorkflowStepConfig,
   state: Record<string, any>
 ): Promise<ActionResult> {
-    return handleHttp(config, state, 'GET');
+  return handleHttp(config, state, 'GET');
 }
 
 export async function handleHttpRequest(
@@ -116,9 +121,10 @@ export async function handleHttp(
   state: Record<string, any>,
   method: 'GET' | 'POST'
 ): Promise<ActionResult> {
+  const logger = new Logger('HttpHandler');
   try {
     const nextConfig = { ...config };
-     
+
     const headers = {
       ...(nextConfig.headers || {}),
       ...mapData({ ...state, ...nextConfig }, nextConfig.headersMapping),
@@ -127,9 +133,15 @@ export async function handleHttp(
       ...(nextConfig.params || {}),
       ...mapData(state, nextConfig.queryMapping),
     };
-    const body =
-      nextConfig.payload ??
-      mapData(state, nextConfig.requestBodyMapping || nextConfig.mapping);
+    const body = mapData({ ...state, ...nextConfig}, nextConfig.requestBodyMapping);
+
+    logger.log(`HTTP ${method} Request → ${nextConfig.url}`);
+    logger.debug({
+      headers,
+      params,
+      body: method === 'GET' ? undefined : body,
+    });
+    const start = Date.now();
 
     const responseBody = await axios.request({
       method,
@@ -139,6 +151,13 @@ export async function handleHttp(
       data: method === 'GET' ? undefined : body,
     });
 
+    logger.log(`HTTP ${method} Response ← ${nextConfig.url} [${responseBody.status}]`);
+    logger.debug({
+      response: responseBody.data,
+    });
+    logger.log(
+      `HTTP ${method} ${nextConfig.url} completed in ${Date.now() - start}ms`
+    );
     return {
       success: true,
       data: responseBody.data,
@@ -149,6 +168,8 @@ export async function handleHttp(
       updatedConfig: nextConfig,
     };
   } catch (err: any) {
+    logger.error(`HTTP ${method} Error ← ${config.url}`, err.stack || err.message);
+
     return {
       success: false,
       error: err.message,

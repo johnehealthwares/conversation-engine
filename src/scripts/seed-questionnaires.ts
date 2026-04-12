@@ -427,6 +427,212 @@ function getBuiltInQuestionnaireSeeds(): SeedQuestionnaire[] {
         },
       ],
     },
+
+
+    {
+      referenceCode: 'WF_APPOINTMENT_Q',
+      name: 'Appointment Booking Flow',
+      code: 'WF_APPOINTMENT_Q',
+      description: 'Collects appointment details and uses workflow for dynamic resolution of facility, location, and client.',
+      introduction: 'Welcome. Let’s book your appointment.',
+      conclusion: 'Your appointment has been successfully created.',
+      endPhrase: 'STOP',
+
+      isDynamic: false,
+      version: 1,
+      isActive: true,
+
+      allowBackNavigation: true,
+      allowMultipleSessions: false,
+
+      processingStrategy: ProcessingStrategy.STATIC,
+
+      workflowCode: 'WF_APPOINTMENT_BOOKING',
+
+      startQuestionReferenceCode: 'WF_APPT_Q__appointment_type',
+
+      metadata: {
+        source: 'built-in',
+        purpose: 'appointment-booking',
+      },
+
+      tags: ['appointment', 'workflow', 'dynamic-options'],
+
+      questions: [
+
+        // 🟦 APPOINTMENT TYPE
+        {
+          referenceCode: 'WF_APPT_Q__appointment_type',
+
+          attribute: 'appointment_type',
+          text: 'Select appointment type',
+          description: 'Choose the type of appointment you want to book',
+
+          questionType: QuestionType.SINGLE_CHOICE,
+          renderMode: RenderMode.RADIO,
+          processMode: ProcessMode.OPTION_PROCESSED,
+
+          index: 1,
+          isRequired: true,
+          isActive: true,
+
+          hasLink: false,
+
+          tags: ['appointment'],
+
+          options: [
+            {
+              key: 'new', label: 'New', value: 'New',
+              referenceCode: '',
+              index: 0
+            },
+            {
+              key: 'followup', label: 'Follow Up', value: 'FollowUp',
+              referenceCode: '',
+              index: 0
+            },
+            {
+              key: 'admission', label: 'Admission', value: 'Admission',
+              referenceCode: '',
+              index: 0
+            },
+            {
+              key: 'annual', label: 'Annual Checkup', value: 'Annual Checkup',
+              referenceCode: '',
+              index: 0
+            },
+          ],
+          nextQuestionReferenceCode: 'WF_APPT_Q__facilityId',
+          validationRules: [
+            { type: 'required' },
+          ],
+        },
+
+        // 🏥 FACILITY
+        {
+          referenceCode: 'WF_APPT_Q__facilityId',
+
+          attribute: 'facilityId',
+          text: 'Enter facility name',
+          description: 'We will search for matching facilities',
+
+          questionType: QuestionType.TEXT,
+          renderMode: RenderMode.INPUT,
+          processMode: ProcessMode.WORKFLOW_PROCESSED,
+
+          index: 2,
+          isRequired: true,
+          isActive: true,
+
+          hasLink: false,
+
+          tags: ['facility', 'workflow'],
+
+          previousQuestionReferenceCode: 'WF_APPT_Q__appointment_type',
+          nextQuestionReferenceCode: 'WF_APPT_Q__locationId',
+
+          validationRules: [
+            {
+              type: 'required',
+              message: 'Facility name is required',
+            },
+          ],
+        },
+
+        // 📍 LOCATION
+        {
+          referenceCode: 'WF_APPT_Q__locationId',
+
+          attribute: 'locationId',
+          text: 'Enter location name',
+          description: 'We will find locations within the selected facility',
+
+          questionType: QuestionType.TEXT,
+          renderMode: RenderMode.INPUT,
+          processMode: ProcessMode.WORKFLOW_PROCESSED,
+
+          index: 3,
+          isRequired: true,
+          isActive: true,
+
+          hasLink: false,
+
+          tags: ['location', 'workflow'],
+
+          previousQuestionReferenceCode: 'WF_APPT_Q__facilityId',
+          nextQuestionReferenceCode: 'WF_APPT_Q__clientId',
+
+          validationRules: [
+            {
+              type: 'required',
+              message: 'Location name is required',
+            },
+          ],
+
+        },
+
+        // 👤 CLIENT
+        {
+          referenceCode: 'WF_APPT_Q__clientId',
+
+          attribute: 'clientId',
+          text: 'Enter phone number or hospital number',
+          description: 'We will locate the patient record',
+
+          questionType: QuestionType.TEXT,
+          renderMode: RenderMode.INPUT,
+          processMode: ProcessMode.WORKFLOW_PROCESSED,
+
+          index: 4,
+          isRequired: true,
+          isActive: true,
+
+          hasLink: false,
+
+          tags: ['client', 'workflow'],
+
+          previousQuestionReferenceCode: 'WF_APPT_Q__locationId',
+          nextQuestionReferenceCode: 'WF_APPT_Q__start_time',
+
+          validationRules: [
+            {
+              type: 'required',
+              message: 'Phone number or hospital number is required',
+            },
+          ],
+
+        },
+
+        // 📅 DATE
+        {
+          referenceCode: 'WF_APPT_Q__start_time',
+
+          attribute: 'start_time',
+          text: 'Enter appointment date (YYYY-MM-DD)',
+          description: 'Provide a valid date',
+
+          questionType: QuestionType.DATE,
+          renderMode: RenderMode.INPUT,
+          processMode: ProcessMode.NONE,
+
+          index: 5,
+          isRequired: true,
+          isActive: true,
+
+          hasLink: false,
+
+          tags: ['date'],
+
+          previousQuestionReferenceCode: 'WF_APPT_Q__clientId',
+
+          validationRules: [
+            { type: 'required' },
+            { type: 'question-type' },
+          ],
+
+        },
+      ],
+    }
   ];
 }
 
@@ -481,8 +687,8 @@ export async function seedQuestionnaires(
 
   const itemsToSync: Array<
     SeedQuestionnaire & {
-      generatedId: Types.ObjectId     
-       exists: boolean;
+      generatedId: Types.ObjectId
+      exists: boolean;
       resolvedWorkflowId?: string;
     }
   > = [];
@@ -544,8 +750,8 @@ export async function seedQuestionnaires(
       isActive: question.isActive ?? true,
       previousQuestionId: question.previousQuestionReferenceCode
         ? questionIdByReference
-            .get(question.previousQuestionReferenceCode)
-            ?.toString()
+          .get(question.previousQuestionReferenceCode)
+          ?.toString()
         : undefined,
       nextQuestionId: question.nextQuestionReferenceCode
         ? questionIdByReference.get(question.nextQuestionReferenceCode)?.toString()
@@ -563,13 +769,13 @@ export async function seedQuestionnaires(
           index: option.index,
           jumpToQuestionId: option.jumpToQuestionReferenceCode
             ? questionIdByReference
-                .get(option.jumpToQuestionReferenceCode)
-                ?.toString()
+              .get(option.jumpToQuestionReferenceCode)
+              ?.toString()
             : undefined,
           backToQuestionId: option.backToQuestionReferenceCode
             ? questionIdByReference
-                .get(option.backToQuestionReferenceCode)
-                ?.toString()
+              .get(option.backToQuestionReferenceCode)
+              ?.toString()
             : undefined,
           childQuestionnaireId: option.childQuestionnaireReferenceCode
             ? questionnaireIdByReference.get(option.childQuestionnaireReferenceCode)
