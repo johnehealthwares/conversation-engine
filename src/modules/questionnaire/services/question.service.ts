@@ -26,9 +26,6 @@ export class QuestionService {
       attribute: dto.attribute || this.buildAttribute(dto.text),
       hasLink: dto.hasLink ?? false,
       tags: dto.tags || [],
-      aiConfig: dto.aiConfig as AIQuestionConfig | undefined,
-      optionSource: dto.optionSource as any,
-      apiNavigation: dto.apiNavigation as any,
       validationRules: dto.validationRules as ValidationRule[] | undefined,
       createdAt: now,
       updatedAt: now,
@@ -65,9 +62,6 @@ export class QuestionService {
     const domain: Partial<QuestionDomain> = {
       ...dto,
       questionnaireId: dto.questionnaireId?.toString(),
-      aiConfig: dto.aiConfig as AIQuestionConfig | undefined,
-      optionSource: dto.optionSource as any,
-      apiNavigation: dto.apiNavigation as any,
       validationRules: dto.validationRules as ValidationRule[] | undefined,
       options: dto.options?.map((option) => ({
         ...option
@@ -79,9 +73,6 @@ export class QuestionService {
   async patch(id: string, dto: UpdateQuestionDto): Promise<QuestionDomain> {
     const domain: Partial<QuestionDomain> = {
       questionnaireId: dto.questionnaireId?.toString(),
-      aiConfig: dto.aiConfig as AIQuestionConfig | undefined,
-      optionSource: dto.optionSource as any,
-      apiNavigation: dto.apiNavigation as any,
       validationRules: dto.validationRules as ValidationRule[] | undefined,
       options: dto.options?.map((option) => ({
         ...option

@@ -31,7 +31,7 @@ export class WorkflowProcessorService {
         ...(event.state || {}),
         answer: event.context?.value,
         attribute: event.context?.attribute,
-        participant: event.context?.participant,
+        receiver: event.context?.receiver,
       },
       context: event.context || {},
       event,

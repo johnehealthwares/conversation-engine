@@ -7,6 +7,7 @@ export type {Channel as ChannelDomain} from './channel.domain';
 export type {Participant as ParticipantDomain} from './participant.domain';
 export type {WorkflowInstance as WorkflowInstanceDomain} from './workflow-instance.domain';
 export type {Workflow as WorkflowDomain} from './workflow.domain';
+export type {Exchange as ExchangeDomain} from './exchange.domain';
 
 export * from './enums';
 export * from './ai-question-config';

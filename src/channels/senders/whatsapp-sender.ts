@@ -45,7 +45,8 @@ export class WhatsappSender implements ChannelSender {
   ) { }
 
   async sendMessage(
-    destination: ParticipantDomain,
+    sender: ParticipantDomain,
+    receiver: ParticipantDomain,
     title: string,
     message: string,
     context: Record<string, any>,
@@ -53,10 +54,10 @@ export class WhatsappSender implements ChannelSender {
     const config = this.getConfig();
     const request = {
       messaging_product: 'whatsapp',
-      to: destination.phone,
+      to: receiver,
       ...this.buildWhatsAppControl(`${message}`, context?.containsLink, +context.page)
     };
-    this.logger.log(`Sending WhatsApp message to ${destination.phone}`);
+    this.logger.log(`Sending WhatsApp message from sender${sender} to ${receiver}`);
 
     try {
       const axiosResponse = await axios.post<WhatsAppSendMessageResponse>(
@@ -71,13 +72,15 @@ export class WhatsappSender implements ChannelSender {
       const response = axiosResponse?.data;
       const messageId = response?.messages?.[0]?.id;
       this.logger.log(`Message sent successfully`, {
-        recipient: destination.phone,
+        sender,
+        receiver,
         messageId,
       });
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: ChannelType.WHATSAPP,
-        recipient: destination.phone!,
+        sender: sender.phone!,
+        receiver: receiver.phone!,
         message,
         conversationId: context?.conversationId,
         questionnaireCode: context?.questionnaireCode,
@@ -92,12 +95,13 @@ export class WhatsappSender implements ChannelSender {
     } catch (error: any) {
       const err = error?.response?.data || error.message;
       this.logger.error(`Failed to send WhatsApp message`, err, {
-        recipient: destination.phone,
+        receiver,
       });
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: ChannelType.WHATSAPP,
-        recipient: destination.phone!,
+        sender: sender.phone!,
+        receiver: receiver.phone!,
         message,
         messageId: 'error',
         conversationId: context?.conversationId,
@@ -114,11 +118,12 @@ export class WhatsappSender implements ChannelSender {
   }
 
   async sendMedia(
-    destination: ParticipantDomain,
+    sender: ParticipantDomain,
+    receiver: ParticipantDomain,
     payload: SendMediaPayload,
   ): Promise<void> {
     const config = this.getConfig();
-    this.logger.log(`Preparing to send media to ${destination.phone}`);
+    this.logger.log(`Preparing to send media to ${receiver} from ${sender}`);
 
     const mediaId =
       payload.file && !payload.fileUrl
@@ -126,7 +131,7 @@ export class WhatsappSender implements ChannelSender {
         : undefined;
 
     if (!mediaId && !payload.fileUrl) {
-      this.logger.warn(`No media provided for ${destination.phone}`);
+      this.logger.warn(`No media provided for ${receiver} from ${sender}`);
 
       throw new HttpException(
         'Provide file or fileUrl to send media',
@@ -134,7 +139,7 @@ export class WhatsappSender implements ChannelSender {
       );
     }
 
-    await this.sendMediaMessage(destination.phone!, payload, mediaId, config);
+    await this.sendMediaMessage(sender.phone!, receiver.phone!, payload, mediaId, config);
   }
 
   private async uploadMedia(file: Express.Multer.File): Promise<string> {
@@ -222,7 +227,8 @@ export class WhatsappSender implements ChannelSender {
   }
 
   private async sendMediaMessage(
-    recipient: string,
+    sender: string,
+    receiver: string,
     payload: SendMediaPayload,
     mediaId?: string,
     config?: ReturnType<WhatsappSender['getConfig']>,
@@ -230,7 +236,7 @@ export class WhatsappSender implements ChannelSender {
     const senderConfig = config || this.getConfig();
     const type = payload.documentType || 'document';
     this.logger.log(`Sending media message`, {
-      recipient,
+      receiver,
       type,
     });
     const supportedTypes = ['document', 'image', 'video', 'audio'];
@@ -255,7 +261,7 @@ export class WhatsappSender implements ChannelSender {
         senderConfig.messagesUrl,
         {
           messaging_product: 'whatsapp',
-          to: recipient,
+          to: receiver,
           type,
           [type]: mediaObject,
         },
@@ -271,7 +277,7 @@ export class WhatsappSender implements ChannelSender {
       const messageId = providerResponse?.messages?.[0]?.id;
 
       this.logger.log(`Media message sent`, {
-        recipient,
+        receiver,
         messageId,
         type,
       });
@@ -279,7 +285,8 @@ export class WhatsappSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: payload.context?.channelId,
         channelType: ChannelType.WEBCHAT,
-        recipient,
+        sender,
+        receiver,
         message: `[media:${type}]`,
         conversationId: payload.context?.conversationId,
         questionnaireCode: payload.context?.questionnaireCode,
@@ -299,7 +306,8 @@ export class WhatsappSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: payload.context?.channelId,
         channelType: 'WHATSAPP',
-        recipient,
+        sender,
+        receiver,
         message: `[media:${type}]`,
         messageId: 'unknown',
         conversationId: payload.context?.conversationId,

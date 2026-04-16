@@ -18,6 +18,16 @@ export class WorkflowEventsSubscriber {
     await this.workflowProcessor.handleEvent(event);
   }
 
+  @OnEvent(WorkflowEventType.WORKFLOW_ANSWER_RECEIVED)
+  async handleWorkflowAnswerReceived(event: IWorkflowEvent) {
+    await this.workflowProcessor.handleEvent(event);
+  }
+
+  @OnEvent(WorkflowEventType.QUESTION_ASKED)
+  async handleQuestionAsked(event: IWorkflowEvent) {
+    await this.workflowProcessor.handleEvent(event);
+  }
+
   @OnEvent(WorkflowEventType.ANSWER_INVALID)
   async handleAnswerInvalid(event: IWorkflowEvent) {
     await this.workflowProcessor.handleEvent(event);

@@ -8,7 +8,6 @@ import {
 } from '../../../shared/domain';
 import { AIProcessorService } from './ai-processor.service';
 import { ApiProcessorFacade } from './api-processor';
-import { OptionResolver } from './option-resolver';
 import { Types } from 'mongoose';
 
 /* -------------------- TYPES -------------------- */
@@ -62,17 +61,12 @@ export class QuestionProcessorService {
   constructor(
     private readonly aiProcessor: AIProcessorService,
     private readonly apiProcessor: ApiProcessorFacade, // ✅ injected
-    private readonly optionResolver: OptionResolver,
   ) { }
 
   /* -------------------- ASK -------------------- */
 
   askQuestion(question: QuestionDomain, conversation?: ConversationDomain) {
     let message = question.text;
-    question.options = this.optionResolver.resolve(
-      question,
-      conversation || ({ context: {} } as ConversationDomain),
-    );
 
     if (question.options?.length) {
       const options = question.options
@@ -270,20 +264,6 @@ export class QuestionProcessorService {
       };
     }
 
-    // ✅ AI MODE
-    if (question.processMode === ProcessMode.AI_PROCESSED) {
-      const ai = await this.aiProcessor.analyze(
-        rawValue,
-        question.aiConfig as any,
-      );
-      return {
-        status: ProcessAnswerStatus.NEXT_QUESTION,
-        rawValue,
-        processedValue: ai.structuredResult.value,
-        nextQuestion: this.resolveNextQuestion(conversation, question)!,
-      };
-    }
-
     if (question.processMode === ProcessMode.WORKFLOW_PROCESSED) {
       return {
         status: ProcessAnswerStatus.WORKFLOW_HANDLING,
@@ -302,22 +282,6 @@ export class QuestionProcessorService {
 
     // ✅ DEFAULT PROCESSING
     const processedValue = rawValue.trim();
-
-    // 🚀 API NAVIGATION (delegated)
-    if (question.processMode === ProcessMode.API_PROCESSED) {
-      const apiResult = await this.apiProcessor.execute(
-        question.apiNavigation!,
-        processedValue,
-        conversation,
-      );
-
-      return {
-        status: ProcessAnswerStatus.NEXT_QUESTION,
-        nextQuestion: this.resolveNextQuestion(conversation, question, apiResult.nextQuestionId)!,
-        processedValue,
-        rawValue,
-      };
-    }
 
 
     const nextQuestion = this.resolveNextQuestion(conversation, question);

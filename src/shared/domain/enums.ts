@@ -6,6 +6,7 @@ export enum QuestionType {
   OBJECT_ID = 'object_id',
   UUID = 'uuid',
   SINGLE_CHOICE = 'single_choice',
+  WORKFLOW_CHOICE = 'workflow_choice',
   MULTI_CHOICE = 'multi_choice',
   BOOLEAN = 'boolean',
   FILE = 'file',
@@ -74,7 +75,6 @@ export enum ConversationStatus {
   CANCELLED = 'CANCELLED',
 }
 
-
 export enum ConversationReponseAction {
   CREATED_NEW_CONVERSATION = "CREATED_NEW_CONVERSATION",
   CONVERSATION_NOT_FOUND = "CONVERSATION_NOT_FOUND",
@@ -85,4 +85,16 @@ export enum ConversationReponseAction {
   COMPLETED_CONVERSATION = "COMPLETED_CONVERSATION",
   PROCESSING_WORKFLOW_ANSWER = "PROCESSING_WORKFLOW_ANSWER",
   WORKFLOW_COMPLETED = "WORKFLOW_COMPLETED"
+}
+
+export enum ExchangeDirection {
+  INBOUND = 'INBOUND',
+  PAGE_REQUEST = 'PAGE_REQUEST',
+  OUTBOUND = 'OUTBOUND',
+}
+
+export enum ExchangeStatus {
+  RECEIVED = 'RECEIVED',
+  SENT = 'SENT',
+  FAILED = 'FAILED',
 }

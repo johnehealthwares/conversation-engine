@@ -12,6 +12,6 @@ export type SendMediaPayload = {
 };
 
 export interface ChannelSender {
-  sendMessage(participant: ParticipantDomain, title: string, message: string, context: Record<string, any>): Promise<void>;
-  sendMedia(participant: ParticipantDomain, payload: SendMediaPayload): Promise<void>;
+  sendMessage(sender: ParticipantDomain, receiver: ParticipantDomain, title: string, message: string, context: Record<string, any>): Promise<void>;
+  sendMedia(sender: ParticipantDomain, receiver: ParticipantDomain, payload: SendMediaPayload): Promise<void>;
 }

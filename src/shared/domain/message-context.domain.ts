@@ -1,17 +1,21 @@
+import { WorkflowEventType } from "src/modules/workflow/entities/step-transition";
 import { Question } from "./question.domain";
 
 export type MessageContext = {
-  participantId?: string;
-  questionnaireCode?: string;
-  channelId?: string;
-  channelType?: string;
+  sender: string;
+  questionnaireId: string;
+  receiver: string;
+  state: Record<string, string>,
+  channelId: string;
   messageId: string;
+  attribute?: string;
+  value?: string;
   workflow?: {
-    step: 'ASK_OPTIONS',
-    questionId: string,
+    step: WorkflowEventType,
+    sourceQuestionId: string,
     query: string,
-    question: Question,
-    resumeQuestionId: string
+    pendingQuestion?: Question,
+    resumeQuestionId?: string
   }
   [key: string]: any
 };

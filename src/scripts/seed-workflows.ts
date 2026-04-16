@@ -314,14 +314,12 @@ const sampleWorkflows = (): SeedWorkflow[] => [
     isActive: true,
 
     steps: [
-
-      // 🔐 AUTHENTICATE
       {
         id: 'appointment_type',
         type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: 'ANSWER_VALID',
+            event: WorkflowEventType.ANSWER_VALID,
             nextStepId: 'facilityId',
           },
         ],
@@ -331,7 +329,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: 'ANSWER_VALID',
+            event: WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
             nextStepId: 'authenticate',
           },
         ],
@@ -342,21 +340,21 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'HTTP_POST',
           url: '{{env.HS_BACKEND_BASE_URL}}/authentication',
-          username: "{{env.HS_BACKEND_USERNAME}}",
-          password: "{{env.HS_BACKEND_PASSWORD}}",
+          username: '{{env.HS_BACKEND_USERNAME}}',
+          password: '{{env.HS_BACKEND_PASSWORD}}',
           accessTokenDuration: 3600000,
           requestBodyMapping: {
             strategy: {
-              path: "",
-              default: "local"
+              path: '',
+              default: 'local',
             },
             email: {
-              "path": "username"
+              path: 'username',
             },
             password: {
-              path: "password"
-            }
-          }, 
+              path: 'password',
+            },
+          },
           responseBodyMapping: {
             accessToken: {
               path: 'data.accessToken',
@@ -371,59 +369,10 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           },
           {
             event: WorkflowEventType.ACTION_FAILED,
-            nextStepId: 'fail',//TODO: use new step, unabble to find facilities
+            nextStepId: 'emit_no_facilities',
           },
         ],
       },
-      // 🧠 WAIT
-      {
-        id: 'wait_for_answers',
-        type: WorkflowStepType.WAIT,
-        transitions: [
-          {
-            event: WorkflowEventType.ANSWER_VALID,
-            nextStepId: 'router',
-          },
-        ],
-      },
-
-      // 🔀 ROUTER
-      {
-        id: 'router',
-        type: WorkflowStepType.WAIT,
-        config: {
-        },
-        transitions: [
-          {
-            event: '*',
-            condition: "context.attribute === 'facilityId'",
-            nextStepId: 'fetch_facilities',
-          },
-          {
-            event: '*',
-            condition: "context.attribute === 'locationId'",
-            nextStepId: 'fetch_locations',
-          },
-          {
-            event: '*',
-            condition: "context.attribute === 'clientId'",
-            nextStepId: 'fetch_clients',
-          },
-          {
-            event: '*',
-            condition: 'state.facilityId && state.locationId && state.clientId && state.appointment_type && state.start_time',
-            nextStepId: 'create_appointment',
-          },
-          {
-            event: '*',
-            condition: 'context.attribute == null',
-            nextStepId: 'wait_for_answers',
-          },
-        ],
-      },
-
-
-      // 🏥 FETCH FACILITIES
       {
         id: 'fetch_facilities',
         type: WorkflowStepType.ACTION,
@@ -438,7 +387,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           },
           queryMapping: {
             'facilityName[$regex]': {
-              path: 'facilityId',
+              path: 'payload.answer',
             },
             'facilityName[$options]': {
               default: 'i',
@@ -458,33 +407,38 @@ const sampleWorkflows = (): SeedWorkflow[] => [
               default: 0,
             },
           },
-        resultMapping: {
-          flowId: { path: 'context.flowId' },
-          options: {
-            path: 'step.response.facilities',
-            transform: 'map',
-            map: {
-              key: 'index',
-              label: 'facilityName',
-              value: '_id',
+          resultMapping: {
+            flowId: { path: 'context.flowId' },
+            question: {
+              text: { default: 'Select a facility' },
+              options: {
+                path: 'step.response.facilities',
+                transform: 'map',
+                map: {
+                  key: 'index',
+                  label: 'facilityName',
+                  value: '_id',
+                },
+              },
             },
           },
-        }
-      },
+        },
         transitions: [
           {
             event: WorkflowEventType.ACTION_COMPLETED,
-            condition: 'fetch_facilities?.result?.options?.length > 0',
+            condition: 'fetch_facilities.result.question.options.length > 0',
             nextStepId: 'emit_facility_options',
           },
           {
-            event: '*',
-            nextStepId: 'emit_no_facilities',//TODO: Emit try again
+            event: WorkflowEventType.ACTION_COMPLETED,
+            nextStepId: 'emit_no_facilities',
+          },
+          {
+            event: WorkflowEventType.ACTION_FAILED,
+            nextStepId: 'emit_no_facilities',
           },
         ],
       },
-
-      // 📤 EMIT FACILITY OPTIONS
       {
         id: 'emit_facility_options',
         type: WorkflowStepType.ACTION,
@@ -495,7 +449,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
             question: {
               text: { default: 'Select a facility' },
               options: {
-                path: 'fetch_facilities.result.options',
+                path: 'fetch_facilities.result.question.options',
               },
             },
           },
@@ -503,70 +457,34 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         transitions: [
           {
             event: WorkflowEventType.ACTION_COMPLETED,
-            nextStepId: 'router',
+            nextStepId: 'locationId',
           },
         ],
       },
-
-      // 📤 EMIT LOCATION OPTIONS
       {
-        id: 'emit_location_options',
-        type: WorkflowStepType.ACTION,
-        config: {
-          action: 'WORKFLOW_ASK_OPTIONS',
-          resultMapping: {
-            flowId: { path: 'context.flowId' },
-            question: {
-              text: { default: 'Select a location' },
-              options: {
-                path: 'fetch_locations.result.options',
-              },
-            },
-          },
-        },
+        id: 'locationId',
+        type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: WorkflowEventType.ACTION_COMPLETED,
-            nextStepId: 'router',
+            event: WorkflowEventType.QUESTION_ASKED,
+            nextStepId: 'fetch_locations',
           },
         ],
       },
-
-      // 📤 EMIT CLIENT OPTIONS
-      {
-        id: 'emit_client_options',
-        type: WorkflowStepType.ACTION,
-        config: {
-          action: 'WORKFLOW_ASK_OPTIONS',
-          resultMapping: {
-            flowId: { path: 'context.flowId' },
-            question: {
-              text: { default: 'Confirm Patient' },
-              options: {
-                path: 'fetch_clients.result.options',
-              },
-            },
-          },
-        },
-        transitions: [
-          {
-            event: WorkflowEventType.ACTION_COMPLETED,
-            nextStepId: 'router',
-          },
-        ],
-      },
-
-      // 📍 FETCH LOCATIONS
       {
         id: 'fetch_locations',
         type: WorkflowStepType.ACTION,
         config: {
           action: 'HTTP_GET',
           url: '{{env.HS_BACKEND_BASE_URL}}/location',
+          headersMapping: {
+            Authorization: {
+              path: 'authenticate.result.accessToken',
+              transform: { prepend: 'Bearer ' },
+            },
+          },
           queryMapping: {
             facility: { path: 'state.facilityId' },
-            'name[$regex]': { path: 'payload.answer' },
-            'name[$options]': { default: 'i' },
           },
           responseBodyMapping: {
             locations: {
@@ -584,13 +502,16 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           },
           resultMapping: {
             flowId: { path: 'context.flowId' },
-            options: {
-              path: 'step.response.locations',
-              transform: 'map',
-              map: {
-                key: 'index',
-                label: 'name',
-                value: '_id',
+            question: {
+              text: { default: 'Select a location' },
+              options: {
+                path: 'step.response.locations',
+                transform: 'map',
+                map: {
+                  key: 'index',
+                  label: 'name',
+                  value: '_id',
+                },
               },
             },
           },
@@ -598,23 +519,63 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         transitions: [
           {
             event: WorkflowEventType.ACTION_COMPLETED,
-            condition: 'fetch_locations.result.options.length > 0',
+            condition: 'fetch_locations.result.question.options.length > 0',
             nextStepId: 'emit_location_options',
           },
           {
-            event: '*',
+            event: WorkflowEventType.ACTION_COMPLETED,
+            nextStepId: 'emit_no_locations',
+          },
+          {
+            event: WorkflowEventType.ACTION_FAILED,
             nextStepId: 'emit_no_locations',
           },
         ],
       },
-
-      // 👤 FETCH CLIENT
+      {
+        id: 'emit_location_options',
+        type: WorkflowStepType.ACTION,
+        config: {
+          action: 'WORKFLOW_ASK_OPTIONS',
+          resultMapping: {
+            flowId: { path: 'context.flowId' },
+            question: {
+              text: { default: 'Select a location' },
+              options: {
+                path: 'fetch_locations.result.question.options',
+              },
+            },
+          },
+        },
+        transitions: [
+          {
+            event: WorkflowEventType.ACTION_COMPLETED,
+            nextStepId: 'clientId',
+          },
+        ],
+      },
+      {
+        id: 'clientId',
+        type: 'QUESTIONNAIRE',
+        transitions: [
+          {
+            event: WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
+            nextStepId: 'fetch_clients',
+          },
+        ],
+      },
       {
         id: 'fetch_clients',
         type: WorkflowStepType.ACTION,
         config: {
           action: 'HTTP_GET',
           url: '{{env.HS_BACKEND_BASE_URL}}/client',
+          headersMapping: {
+            Authorization: {
+              path: 'authenticate.result.accessToken',
+              transform: { prepend: 'Bearer ' },
+            },
+          },
           queryMapping: {
             'phone[$regex]': { path: 'payload.answer' },
             'phone[$options]': { default: 'i' },
@@ -635,32 +596,61 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           },
           resultMapping: {
             flowId: { path: 'context.flowId' },
-            options: {
-              path: 'step.response.clients',
-              transform: 'map',
-              map: {
-                key: 'index',
-                label: 'firstname',
-                value: '_id',
+            question: {
+              text: { default: 'Confirm patient' },
+              options: {
+                path: 'step.response.clients',
+                transform: 'map',
+                map: {
+                  key: 'index',
+                  label: 'firstname',
+                  value: '_id',
+                },
               },
             },
-          }
+          },
         },
         transitions: [
           {
             event: WorkflowEventType.ACTION_COMPLETED,
-            condition: 'fetch_clients.result.options.length > 0',
+            condition: 'fetch_clients.result.question.options.length > 0',
             nextStepId: 'emit_client_options',
           },
           {
-            event: '*',
+            event: WorkflowEventType.ACTION_COMPLETED,
+            nextStepId: 'emit_no_client',
+          },
+          {
+            event: WorkflowEventType.ACTION_FAILED,
             nextStepId: 'emit_no_client',
           },
         ],
       },
       {
-        id: 'await_completion',
-        type: WorkflowStepType.WAIT,
+        id: 'emit_client_options',
+        type: WorkflowStepType.ACTION,
+        config: {
+          action: 'WORKFLOW_ASK_OPTIONS',
+          resultMapping: {
+            flowId: { path: 'context.flowId' },
+            question: {
+              text: { default: 'Confirm patient' },
+              options: {
+                path: 'fetch_clients.result.question.options',
+              },
+            },
+          },
+        },
+        transitions: [
+          {
+            event: WorkflowEventType.ACTION_COMPLETED,
+            nextStepId: 'start_time',
+          },
+        ],
+      },
+      {
+        id: 'start_time',
+        type: 'QUESTIONNAIRE',
         transitions: [
           {
             event: WorkflowEventType.CONVERSATION_COMPLETED,
@@ -668,14 +658,21 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           },
         ],
       },
-
-      // 📅 CREATE APPOINTMENT
       {
         id: 'create_appointment',
         type: WorkflowStepType.ACTION,
         config: {
           action: 'HTTP_POST',
           url: '{{env.HS_BACKEND_BASE_URL}}/appointments',
+          headersMapping: {
+            Authorization: {
+              path: 'authenticate.result.accessToken',
+              transform: { prepend: 'Bearer ' },
+            },
+            'Content-Type': {
+              default: 'application/json',
+            },
+          },
           requestBodyMapping: {
             facility: { path: 'state.facilityId' },
             locationId: { path: 'state.locationId' },
@@ -697,7 +694,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
       },
       {
         id: 'emit_no_facilities',
-        type: 'ACTION',
+        type: WorkflowStepType.ACTION,
         config: {
           action: 'WORKFLOW_NO_OPTIONS_FOUND',
           resultMapping: {
@@ -715,72 +712,66 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         },
         transitions: [
           {
-            event: 'ACTION_COMPLETED',
-            nextStepId: 'locationId',
-          },
-        ],
-      },
-
-      {
-        id: 'emit_no_locations',
-        type: 'ACTION',
-        config: {
-          action: 'WORKFLOW_NO_OPTIONS_FOUND',
-          resultMapping: {
-            flowId: {
-              path: 'context.flowId',
-              validation: {
-                required: true,
-                type: 'string',
-              },
-            },
-            message: {
-              default: 'No locations matched your answer. Please enter a different location name.',
-            },
-          },
-        },
-        transitions: [
-          {
-            event: 'ACTION_COMPLETED',
-            nextStepId: 'clientId',
-          },
-        ],
-      },
-
-      {
-        id: 'emit_no_client',
-        type: 'ACTION',
-        config: {
-          action: 'WORKFLOW_NO_OPTIONS_FOUND',
-          resultMapping: {
-            flowId: {
-              path: 'context.flowId',
-              validation: {
-                required: true,
-                type: 'string',
-              },
-            },
-            message: {
-              default: 'No client matched your answer. Please enter a different client .',
-            },
-          },
-        },
-        transitions: [
-          {
-            event: 'ACTION_COMPLETED',
+            event: WorkflowEventType.ACTION_COMPLETED,
             nextStepId: 'facilityId',
           },
         ],
       },
-
-      // ❌ FAIL SAFE
+      {
+        id: 'emit_no_locations',
+        type: WorkflowStepType.ACTION,
+        config: {
+          action: 'WORKFLOW_NO_OPTIONS_FOUND',
+          resultMapping: {
+            flowId: {
+              path: 'context.flowId',
+              validation: {
+                required: true,
+                type: 'string',
+              },
+            },
+            message: {
+              default: 'No locations were found for the selected facility. Please choose another facility.',
+            },
+          },
+        },
+        transitions: [
+          {
+            event: WorkflowEventType.ACTION_COMPLETED,
+            nextStepId: 'facilityId',
+          },
+        ],
+      },
+      {
+        id: 'emit_no_client',
+        type: WorkflowStepType.ACTION,
+        config: {
+          action: 'WORKFLOW_NO_OPTIONS_FOUND',
+          resultMapping: {
+            flowId: {
+              path: 'context.flowId',
+              validation: {
+                required: true,
+                type: 'string',
+              },
+            },
+            message: {
+              default: 'No client matched your answer. Please enter a different phone number or hospital number.',
+            },
+          },
+        },
+        transitions: [
+          {
+            event: WorkflowEventType.ACTION_COMPLETED,
+            nextStepId: 'clientId',
+          },
+        ],
+      },
       {
         id: 'fail',
         type: WorkflowStepType.END,
         transitions: [],
       },
-
-      // ✅ DONE
       {
         id: 'done',
         type: WorkflowStepType.END,

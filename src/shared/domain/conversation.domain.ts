@@ -1,11 +1,13 @@
 import { ConversationState, ConversationStatus } from "./enums";
 import type { QuestionDomain } from ".";
+import { MessageContext } from "./message-context.domain";
 
 export type Conversation = {
      id?: string;
      channelId: string;
      questionnaireId: string;
      participantId: string;
+     moderatorId: string;
      workflowInstanceId?: string;
      currentQuestionId?: string;
      questions?: QuestionDomain[];
@@ -14,6 +16,5 @@ export type Conversation = {
      startedAt?: Date;
      endedAt?: Date;
      pendingMessages?: string[];
-     awaitingUserReply?: boolean;
-     context: Record<string, any>;
+     context: MessageContext;
 }

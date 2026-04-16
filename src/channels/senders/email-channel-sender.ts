@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { MailerService } from '@nestjs-modules/mailer';
-import { ParticipantDomain } from '../../shared/domain';
+import { ExchangeStatus, ParticipantDomain } from '../../shared/domain';
 import { ChannelSender, SendMediaPayload } from './channel-sender';
 import { ExchangeService } from '../services/exchange.service';
 import { ChannelType } from '../schemas/channel.schema';
-import { ExchangeStatus } from '../schemas/exchange.schema';
 import { Types } from 'mongoose';
 
 @Injectable()
@@ -16,17 +15,16 @@ export class EmailChannelSender implements ChannelSender {
   return htmlRegex.test(str);
 }
   async sendMessage(
-    participant: ParticipantDomain,
+    sender: ParticipantDomain,
+    receiver: ParticipantDomain,
     title: string,
     message: string,
     context: Record<string, any>
   ): Promise<void> {
-    if (!participant.email) {
-      throw new Error('Participant does not have an email');
-    }
+   
     const isHtml = this.isHtmlString(message);
     const request = {
-      to: participant.email,
+      to: receiver.email,
       subject: title,
       text: !isHtml ? message : '',
       html:  isHtml ? message : '',
@@ -37,7 +35,8 @@ export class EmailChannelSender implements ChannelSender {
         await this.exchangeService.logOutbound({
             channelId: context?.channelId,
             channelType: ChannelType.EMAIL,
-            recipient: participant.email!,
+            sender: sender.email!,
+            receiver: receiver.email!,
             message,
             conversationId: context?.conversationId,
             questionnaireCode: context?.questionnaireCode,
@@ -54,7 +53,8 @@ export class EmailChannelSender implements ChannelSender {
             await this.exchangeService.logOutbound({
               channelId: context?.channelId,
               channelType: ChannelType.WHATSAPP,
-              recipient: participant.email!,
+              sender: sender.email!,
+              receiver: receiver.email!,
               message,
               messageId: 'error',
               conversationId: context?.conversationId,
@@ -71,13 +71,10 @@ export class EmailChannelSender implements ChannelSender {
   }
 
   async sendMedia(
-    participant: ParticipantDomain,
+    sender: ParticipantDomain,
+    receiver: ParticipantDomain,
     payload: SendMediaPayload
   ): Promise<void> {
-    if (!participant.email) {
-      throw new Error('Participant does not have an email');
-    }
-
     const attachments:any[] = [];
     // Case 1: File upload
     if (payload.file) {
@@ -96,7 +93,7 @@ export class EmailChannelSender implements ChannelSender {
     }
 
     await this.mailerService.sendMail({
-      to: participant.email,
+      to: receiver.email,
       subject: payload.title || 'Document',
       text: `${payload.message}\nPlease find attached ${payload.documentType}`,
       attachments,

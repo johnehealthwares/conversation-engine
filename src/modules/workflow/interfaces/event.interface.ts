@@ -9,8 +9,8 @@ export interface WorkflowEventContext {
   flowId?: string;
   stepId?: string;
   correlationId?: string;
-  userId?: string;
-  participant?: string;
+  sender?: string;
+  receiver?: string;
   attribute?: string;
   value?: string;
 }

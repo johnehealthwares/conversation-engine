@@ -175,7 +175,7 @@ curl -v -X POST https://conversation-engine-5epg.onrender.com/api/channels/send-
   -H 'Content-Type: application/json' \
   -d '{
   "channelId": "69bd061c11bf835d976c4e2f",
-  "from": "23412345434",
+  "from": "23412345435",
   "text": "2010-12-12"
 }'
 
@@ -227,13 +227,24 @@ curl -X 'POST' \
 
 ###Send Message
 curl -X 'POST' \
-  'http://localhost:8090/api/webhooks/whatsapp' \
+  'http://localhost:8090/api/webhooks/mock' \
   -H 'accept: */*' \
   -H 'Content-Type: application/json' \
   -d '{
   "channelId": "69bd061c11bf835d976c4e2f",
   "from": "+2348012345679",
-  "message": "new"
+  "text": "WF_APPOINTMENT_Q"
+}'
+
+###Send Message
+curl -X 'POST' \
+  'http://localhost:8090/api/webhooks/mock' \
+  -H 'accept: */*' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "channelId": "69bd061c11bf835d976c4e2f",
+  "from": "+2348012345679",
+  "text": "new"
 }'
 
 

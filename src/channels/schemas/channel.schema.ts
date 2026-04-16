@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import {Schema as MongooseSchema, Types} from 'mongoose';
 
 export type ChannelDocument = Channel;
 
@@ -25,6 +26,9 @@ export class Channel {
 
   @Prop()
   externalId?: string;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId })
+  pseudoParticipant?: Types.ObjectId;
 
   @Prop({ required: true, default: true })
   isActive: boolean;

@@ -2,15 +2,17 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { ChannelSender, SendMediaPayload } from './channel-sender';
-import { ParticipantDomain } from '../../shared/domain';
+import { ExchangeStatus, ParticipantDomain } from '../../shared/domain';
 import { ExchangeService } from '../services/exchange.service';
-import { ExchangeStatus } from '../schemas/exchange.schema';
 import { Types } from 'mongoose';
+import { Channel } from 'src/shared/domain/channel.domain';
 
 @Injectable()
 export class NigeriaBulkSmsSender implements ChannelSender {
   private readonly baseUrl =
     'https://portal.nigeriabulksms.com/api/';
+
+  private channel: Channel;
 
   constructor(
     private readonly configService: ConfigService,
@@ -38,7 +40,8 @@ export class NigeriaBulkSmsSender implements ChannelSender {
 
 
   async sendMessage(
-    participant: ParticipantDomain,
+    sender: ParticipantDomain,
+    receiver: ParticipantDomain,
     title: string,
     message: string,
     context: Record<string, any> = {},
@@ -46,7 +49,7 @@ export class NigeriaBulkSmsSender implements ChannelSender {
     try {
       const username = this.configService.get<string>('BULKSMS_USERNAME') || '';
       const password = this.configService.get<string>('BULKSMS_PASSWORD') || '';
-      const sender = this.configService.get<string>('BULKSMS_SENDER') || 'App';
+      const senderName = this.configService.get<string>('BULKSMS_SENDER') || 'App';
 
       if (!username || !password) {
         throw new Error('BulkSMS credentials are not configured');
@@ -55,9 +58,9 @@ export class NigeriaBulkSmsSender implements ChannelSender {
       const params = new URLSearchParams({
         username,
         password,
-        sender,
+        senderName,
         message: (`*${title || ''}*: ${message}`).substring(0, 470),
-        mobiles: this.formatNigerianNumber(participant.phone!),
+        mobiles: this.formatNigerianNumber(receiver.phone),
       });
 
       const url = `${this.baseUrl}?${params.toString()}`;
@@ -69,7 +72,8 @@ export class NigeriaBulkSmsSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: 'SMS',
-        recipient: participant.phone!,
+        senderId: sender.phone!,
+        receiverId: receiver.phone!,
         message,
         messageId: new Types.ObjectId().toString(),
         conversationId: context?.conversationId,
@@ -84,7 +88,8 @@ export class NigeriaBulkSmsSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: 'SMS',
-        recipient: participant.phone!,
+        senderId: sender.id,
+        receiverId: receiver.id,
         message,
         messageId: new Types.ObjectId().toString(),
         conversationId: context?.conversationId,
@@ -103,9 +108,9 @@ export class NigeriaBulkSmsSender implements ChannelSender {
     }
   }
 
-  async   sendMedia(participant: ParticipantDomain, payload: SendMediaPayload): Promise<void> {
+  async sendMedia(sender: ParticipantDomain, receiver: ParticipantDomain, payload: SendMediaPayload): Promise<void> {
     //TODO: If file, upload to cloudinary
-     return this.sendMessage(participant, payload.title, `${payload.message}  Download File @ ${payload.fileUrl || payload.fileName || payload.file?.filename}`, payload.context)
+    return this.sendMessage(sender, receiver, payload.title, `${payload.message}  Download File @ ${payload.fileUrl || payload.fileName || payload.file?.filename}`, payload.context)
   }
 
 

@@ -6,6 +6,7 @@ import { Participant } from './participant.schema';
 import { Question, QuestionSchema } from '../../questionnaire/schemas/question.schema';
 import { ConversationState, ConversationStatus } from '../../../shared/domain';
 import { WorkflowInstance } from '../../workflow/entities/instance';
+import { type MessageContext } from 'src/shared/domain/message-context.domain';
 
 @Schema({ timestamps: true })
 export class Conversation {
@@ -36,7 +37,7 @@ export class Conversation {
   questions?: Question[]; // optional snapshot of questionnaire at start
 
   @Prop({ type: Object, default: {} })
-  context: Record<string, any>; // e.g., session info, AI state
+  context: MessageContext;
 
   @Prop({ type: Date })
   startedAt?: Date;

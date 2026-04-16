@@ -544,12 +544,12 @@ function getBuiltInQuestionnaireSeeds(): SeedQuestionnaire[] {
           referenceCode: 'WF_APPT_Q__locationId',
 
           attribute: 'locationId',
-          text: 'Enter location name',
-          description: 'We will find locations within the selected facility',
+          text: 'Select location',
+          description: 'We will load locations for the facility you selected',
 
-          questionType: QuestionType.TEXT,
-          renderMode: RenderMode.INPUT,
-          processMode: ProcessMode.WORKFLOW_PROCESSED,
+          questionType: QuestionType.WORKFLOW_CHOICE,
+          renderMode: RenderMode.DROPDOWN,
+          processMode: ProcessMode.NONE,
 
           index: 3,
           isRequired: true,
@@ -565,7 +565,7 @@ function getBuiltInQuestionnaireSeeds(): SeedQuestionnaire[] {
           validationRules: [
             {
               type: 'required',
-              message: 'Location name is required',
+              message: 'Select a location to continue',
             },
           ],
 

@@ -34,9 +34,9 @@ export class StepRunnerService {
       state,
       payload: {
         ...(triggerEvent.state || {}),
-        answer: triggerEvent.context?.value,
+        value: triggerEvent.context?.value,
         attribute: triggerEvent.context?.attribute,
-        participant: triggerEvent.context?.participant,
+        participant: triggerEvent.context?.sender,
       },
       context: triggerEvent.context || {},
       event: triggerEvent,

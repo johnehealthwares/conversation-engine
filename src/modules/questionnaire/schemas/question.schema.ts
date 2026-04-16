@@ -38,7 +38,6 @@ export class Question {
   @Prop({ required: true })
   index: number;
 
-
   @Prop({ type: [String], default: [] })
   tags: string[];
 
@@ -93,15 +92,6 @@ export class Question {
   childQuestionnaireId?: Types.ObjectId
   @Prop({ type: [OptionSchema], default: [] })
   options?: Option[];
-
-  @Prop({ type: MongooseSchema.Types.Mixed })
-  aiConfig?: Record<string, any>;
-
-  @Prop({ type: MongooseSchema.Types.Mixed })
-  optionSource?: Record<string, any>;
-
-  @Prop({ type: MongooseSchema.Types.Mixed })
-  apiNavigation?: Record<string, any>;
 
   @Prop({ type: [MongooseSchema.Types.Mixed], default: [] })
   validationRules?: ValidationRule[];

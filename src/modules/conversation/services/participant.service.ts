@@ -24,6 +24,12 @@ export class ParticipantService {
     });
   }
 
+  async getQuestionaireChannelModerator(questionnaireId: string, channelId: string, phone: string, email: string): Promise<ParticipantDomain> {
+    return  this.participantRepo.create({
+
+    })
+  }
+
   async createParticipant(participant: ParticipantDomain) {
     this.logger.debug(`[participant:create] Resolving participant phone=${participant.phone || 'n/a'}`);
     const result = participant.phone

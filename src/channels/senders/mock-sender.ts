@@ -8,12 +8,13 @@ export class MockSender implements ChannelSender {
   private readonly logger = new Logger(MockSender.name);
 
   constructor(private readonly exchangeService: ExchangeService) {}
-  sendMedia(participant: ParticipantDomain, payload: SendMediaPayload): Promise<void> {
+  sendMedia(sender: ParticipantDomain, receiver: ParticipantDomain, payload: SendMediaPayload): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
   async sendMessage(
-    destination: ParticipantDomain,
+    sender: ParticipantDomain,
+    receiver: ParticipantDomain,
     title: string,
     message: string,
     context: Record<string, any>,
@@ -21,10 +22,10 @@ export class MockSender implements ChannelSender {
     const messageId = `mock-out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     this.logger.log(
-      `[mock:send] to=${destination.phone || destination.id}`,
+      `[mock:send] to=${receiver.phone || receiver.id}`,
     );
     console.log('[MOCK CHANNEL OUTBOUND]', {
-      to: destination.phone || destination.id,
+      to: receiver.phone || receiver.id,
       message,
       context,
     });
@@ -32,7 +33,8 @@ export class MockSender implements ChannelSender {
     await this.exchangeService.logOutbound({
       channelId: context?.channelId,
       channelType: ChannelType.MOCK,
-      recipient: destination.phone || destination.id || 'unknown',
+      sender: sender.id,
+      receiver: receiver.id,
       message,
       messageId,
       conversationId: context?.conversationId,
@@ -41,7 +43,8 @@ export class MockSender implements ChannelSender {
       rawPayload: {
         provider: 'console',
         message,
-        destination,
+        sender,
+        receiver,
         context,
       },
     });

@@ -1,26 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Schema as MongooseSchema, Types } from 'mongoose';
-
-export type ExchangeDocument = Exchange;
-
-export enum ExchangeDirection {
-  INBOUND = 'INBOUND',
-  PAGE_REQUEST = 'PAGE_REQUEST',
-  OUTBOUND = 'OUTBOUND',
-}
-
-export enum ExchangeStatus {
-  RECEIVED = 'RECEIVED',
-  SENT = 'SENT',
-  FAILED = 'FAILED',
-}
+import { ExchangeDirection, ExchangeStatus } from 'src/shared/domain';
 
 @Schema({ timestamps: true })
 export class Exchange {
   @Prop({ type: MongooseSchema.Types.ObjectId })
   _id: Types.ObjectId
   @Prop()
-  channelId?: string;
+  channelId: string;
 
   @Prop({ required: true })
   channelType: string;
@@ -31,11 +18,11 @@ export class Exchange {
   @Prop({ required: true, enum: Object.values(ExchangeStatus) })
   status: ExchangeStatus;
 
-  @Prop()
-  recipient?: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId })
+  receiverId: Types.ObjectId
 
-  @Prop()
-  sender?: string;
+  @Prop({ type: MongooseSchema.Types.ObjectId })
+  senderId: Types.ObjectId
 
   @Prop( { required: true })
   messageId: string;
