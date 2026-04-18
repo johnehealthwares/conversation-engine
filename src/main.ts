@@ -9,6 +9,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { seedWorkflows } from './scripts/seed-workflows';
 import { json, urlencoded } from 'express';
+import { seedChannels } from './scripts/seed-channels';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -47,6 +48,11 @@ app.enableCors();
       const seedingResult = await seedQuestionnaires(app);
       logger.log(
         `[boot:seed] Questionnaire sync complete :: created=${seedingResult.created} updated=${seedingResult.updated} skipped=${seedingResult.skipped}`,
+      ); 
+      logger.log('[boot:seed] Startup challel sync enabled. Beginning seed run.');
+      const channelSeedingResult = await seedChannels(app);
+      logger.log(
+        `[boot:seed] Questionnaire sync complete :: created=${channelSeedingResult.created} updated=${channelSeedingResult.updated} skipped=${channelSeedingResult.skipped}`,
       );
     } catch (error: any) {
       logger.error(

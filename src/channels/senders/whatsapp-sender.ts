@@ -1,11 +1,11 @@
-import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, Logger, OnModuleInit, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import type { Express } from 'express';
 import { ChannelSender, SendMediaPayload } from './channel-sender';
-import { ChannelType, ParticipantDomain } from '../../shared/domain';
+import { ChannelDomain, ChannelType, ExchangeStatus, ParticipantDomain } from '../../shared/domain';
 import { ExchangeService } from '../services/exchange.service';
-import { ExchangeStatus } from '../schemas/exchange.schema';
+import { ParticipantService } from 'src/modules/conversation/services/participant.service';
+import { ChannelService } from '../services/channel.service';
 
 interface WhatsAppSendMessageResponse {
   messaging_product: 'whatsapp';
@@ -36,13 +36,37 @@ interface WhatsAppTemplateParams {
 
 
 @Injectable()
-export class WhatsappSender implements ChannelSender {
+export class WhatsappSender implements ChannelSender, OnModuleInit {
   private readonly logger = new Logger(WhatsappSender.name);
+  private channel: ChannelDomain;
+  private readonly pseudoParticipant: ParticipantDomain;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly exchangeService: ExchangeService,
+    private readonly channelService: ChannelService,
+    private readonly participantService: ParticipantService
   ) { }
+
+
+  async onModuleInit() {
+    this.logger.log('WhatsappSender initialized');
+    const channel = await this.channelService.findById(this.configService.getOrThrow<string>('CHANNEL_ID_WHATSAPP'));
+    if (!channel) throw new NotFoundException(`WhatsApp channel not found`);
+    this.channel = channel;
+    const participant = await this.participantService.findOne(channel.pseudoParticipantId);
+    if (!participant) throw new NotFoundException(`Default Participant for WhatsApp channel not found`);
+    this.pseudoParticipant = participant;
+  }
+
+  getChannel(): ChannelDomain {
+    return this.channel;
+  }
+
+
+  getPseudoParticipant(): ParticipantDomain {
+    return this.pseudoParticipant;
+  }
 
   async sendMessage(
     sender: ParticipantDomain,
@@ -54,8 +78,8 @@ export class WhatsappSender implements ChannelSender {
     const config = this.getConfig();
     const request = {
       messaging_product: 'whatsapp',
-      to: receiver,
-      ...this.buildWhatsAppControl(`${message}`, context?.containsLink, +context.page)
+      to: receiver.phone,
+      ...this.buildWhatsAppControl(`${message}`, context?.containsLink, +context.page),
     };
     this.logger.log(`Sending WhatsApp message from sender${sender} to ${receiver}`);
 
@@ -76,11 +100,12 @@ export class WhatsappSender implements ChannelSender {
         receiver,
         messageId,
       });
+      const receiverId =  
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: ChannelType.WHATSAPP,
-        sender: sender.phone!,
-        receiver: receiver.phone!,
+        senderId: sender.id!,
+        receiverId: receiver.id!,
         message,
         conversationId: context?.conversationId,
         questionnaireCode: context?.questionnaireCode,
@@ -100,8 +125,8 @@ export class WhatsappSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: ChannelType.WHATSAPP,
-        sender: sender.phone!,
-        receiver: receiver.phone!,
+        senderId: sender.id,
+        receiverId: receiver.id,
         message,
         messageId: 'error',
         conversationId: context?.conversationId,
@@ -227,16 +252,18 @@ export class WhatsappSender implements ChannelSender {
   }
 
   private async sendMediaMessage(
-    sender: string,
-    receiver: string,
+    senderId: string,
+    receiverId: string,
     payload: SendMediaPayload,
     mediaId?: string,
     config?: ReturnType<WhatsappSender['getConfig']>,
   ): Promise<void> {
+    const sender = await this.participantService.findOne(senderId);
+    const receiver = await this.participantService.findOne(receiverId);
     const senderConfig = config || this.getConfig();
     const type = payload.documentType || 'document';
     this.logger.log(`Sending media message`, {
-      receiver,
+      sender: sender.phone,
       type,
     });
     const supportedTypes = ['document', 'image', 'video', 'audio'];
@@ -261,7 +288,7 @@ export class WhatsappSender implements ChannelSender {
         senderConfig.messagesUrl,
         {
           messaging_product: 'whatsapp',
-          to: receiver,
+          to: receiver.phone,
           type,
           [type]: mediaObject,
         },
@@ -277,16 +304,16 @@ export class WhatsappSender implements ChannelSender {
       const messageId = providerResponse?.messages?.[0]?.id;
 
       this.logger.log(`Media message sent`, {
-        receiver,
+        receiver: receiver.phone,
         messageId,
         type,
       });
-
+ 
       await this.exchangeService.logOutbound({
         channelId: payload.context?.channelId,
-        channelType: ChannelType.WEBCHAT,
-        sender,
-        receiver,
+        channelType: ChannelType.WHATSAPP,
+        senderId: sender.id,
+        receiverId: receiver.id,
         message: `[media:${type}]`,
         conversationId: payload.context?.conversationId,
         questionnaireCode: payload.context?.questionnaireCode,
@@ -306,8 +333,8 @@ export class WhatsappSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: payload.context?.channelId,
         channelType: 'WHATSAPP',
-        sender,
-        receiver,
+        senderId: sender.id,
+        receiverId: receiver.id,
         message: `[media:${type}]`,
         messageId: 'unknown',
         conversationId: payload.context?.conversationId,
@@ -332,16 +359,18 @@ export class WhatsappSender implements ChannelSender {
 
 
   private parseControlString(input: string): ParsedControl {
-    const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = input.split('\n').map((l) => l.trim()).filter(Boolean);
 
     const text = lines[0];
 
-    const options = lines.slice(1).map(line => {
-      const [id, title] = line.split(':').map(p => p.trim());
+    const options = lines.slice(1).map((line) => {
+      const parts = line.split(':').map((p) => p.trim());
+      const id = parts[0] || '';
+      const title = parts.length > 1 ? parts.slice(1).join(':') : '';
 
       return {
         id,
-        title: title.substring(0, 23)
+        title: title ? title.substring(0, 23) : '',
       };
     });
 
@@ -378,67 +407,7 @@ export class WhatsappSender implements ChannelSender {
       };
     }
 
-    const options = parsed.options;
-    const totalOptions = options.length;
-
-    // Determine total pages
-    let pageSizeFirst = 10;
-    if (totalOptions > 10) pageSizeFirst = 9; // first page leaves space for Next
-
-    let totalPages: number;
-    if (totalOptions <= 10) {
-      totalPages = 1;
-    } else {
-      const remaining = totalOptions - 9;
-      totalPages = 1 + Math.ceil(remaining / 8);
-    }
-
-    // Calculate start index for current page
-    let start = 0;
-    if (page === 0) start = 0;
-    else start = 9 + (page - 1) * 8;
-
-    // Determine how many options this page can show
-    let pageSize = 10; // max rows
-    const hasPrev = page > 0;
-    const remainingOptions = totalOptions - start;
-
-    if (page === 0) {
-      pageSize = totalOptions > 10 ? 9 : remainingOptions; // first page
-    } else if (page < totalPages - 1) {
-      pageSize = 8; // middle pages have Prev + Next
-    } else {
-      pageSize = remainingOptions + (hasPrev ? 1 : 0); // last page may include Prev
-      if (pageSize > 10) pageSize = 10; // safety
-    }
-
-    const pageOptions = options.slice(start, start + pageSize - (hasPrev && page < totalPages - 1 ? 1 : 0));
-
-    // Build rows
-    const rows: any[] = [];
-
-    if (hasPrev) {
-      rows.push({
-        id: `page_rqst_prev_${page - 1}`,
-        title: "⬅ Previous",
-      });
-    }
-
-    rows.push(
-      ...pageOptions.map((o) => ({
-        id: o.id,
-        title: o.title.slice(0, 24),
-      })),
-    );
-
-    const isLastPage = start + pageOptions.length >= totalOptions;
-
-    if (!isLastPage) {
-      rows.push({
-        id: `page_rqst_next_${page + 1}`,
-        title: "Next ➡",
-      });
-    }
+    const { rows, page: currentPage, totalPages } = this.paginateOptions(parsed.options, page);
 
     return {
       type: "interactive",
@@ -448,7 +417,7 @@ export class WhatsappSender implements ChannelSender {
           text: parsed.text,
         },
         action: {
-          button: `Select (${page + 1}/${totalPages} Lists)`,
+          button: `Select (${currentPage + 1}/${totalPages} Lists)`,
           sections: [
             {
               title: "Options",
@@ -459,6 +428,8 @@ export class WhatsappSender implements ChannelSender {
       },
     };
   }
+
+  
 
   private getConfig() {
     const phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID');
@@ -479,6 +450,81 @@ export class WhatsappSender implements ChannelSender {
       token,
       messagesUrl: `${baseUrl}/messages`,
       mediaUrl: `${baseUrl}/media`,
+    };
+  }
+
+  private paginateOptions(
+    options: { id: string; title: string }[],
+    pageInput: number,
+  ) {
+    const MAX_ROWS = 10;
+    const FIRST_PAGE_SIZE = 9;
+    const MIDDLE_PAGE_SIZE = 8;
+
+    const total = options.length;
+    if (total <= MAX_ROWS) {
+      return {
+        rows: options.map((o) => ({
+          id: o.id,
+          title: o.title.slice(0, 24),
+        })),
+        page: 0,
+        totalPages: 1,
+      };
+    }
+
+    const remainder = total - FIRST_PAGE_SIZE;
+    const middlePages = Math.ceil(remainder / MIDDLE_PAGE_SIZE);
+    const totalPages = 1 + middlePages;
+
+    let page = Number(pageInput);
+    if (isNaN(page) || page < 0) page = 0;
+    if (page >= totalPages) page = totalPages - 1;
+
+    let start: number;
+    let end: number;
+    if (page === 0) {
+      start = 0;
+      end = FIRST_PAGE_SIZE;
+    } else {
+      start = FIRST_PAGE_SIZE + (page - 1) * MIDDLE_PAGE_SIZE;
+      end = start + MIDDLE_PAGE_SIZE;
+      if (page === totalPages - 1) {
+        end = total;
+      }
+    }
+
+    const pageItems = options.slice(start, end);
+
+    const rows: any[] = [];
+    const hasPrev = page > 0;
+    const hasNext = page < totalPages - 1;
+
+    if (hasPrev) {
+      rows.push({
+        id: `page_prev_${page - 1}`,
+        title: '⬅ Previous',
+      });
+    }
+
+    rows.push(
+      ...pageItems.map((o) => ({
+        id: o.id,
+        title: o.title.slice(0, 24),
+      })),
+    );
+
+    if (hasNext) {
+      rows.push({
+        id: `page_next_${page + 1}`,
+        title: 'Next ➡',
+      });
+    }
+
+    return {
+      rows,
+      page,
+      totalPages,
     };
   }
 

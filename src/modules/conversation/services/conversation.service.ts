@@ -41,6 +41,7 @@ import { ProcessConversationResponseDto } from '../controllers/dto/process-conve
 import { ChannelService } from '../../../channels/services/channel.service';
 import { WorkflowEventType } from '../../workflow/entities/step-transition';
 import { IntentService } from './intent.service';
+import { send } from 'process';
 
 
 @Injectable()
@@ -53,7 +54,7 @@ export class ConversationService {
     private readonly questionService: QuestionService,
     private readonly responseService: ResponseService,
     private readonly participantService: ParticipantService,
-    private readonly senderFactory: ChannelSenderFactory,
+    private readonly channelSenderFactory: ChannelSenderFactory,
     private readonly channelService: ChannelService,
     private readonly questionProcessor: QuestionProcessorService,
     private readonly workflowProcessor: WorkflowProcessorService,
@@ -240,14 +241,13 @@ export class ConversationService {
 
   async processResponse(id: string, dto: ProcessConversationResponseDto) {
     const conversation = await this.findOne(id);
-    const moderator = await this.participantService.findOne(conversation.moderatorId);
-    const participant = await this.participantService.findOne(conversation.participantId);
     const channel = await this.channelService.findOne(conversation.channelId);
+    if(!channel) throw new NotFoundException('Connversation Channel not found')
     const questionnaire = await this.questionnaireService.findOne(conversation.questionnaireId);
     return this.processInboundMessage(
       channel,
-      moderator,
-      participant,
+      conversation.moderatorId,
+      conversation.participantId,
       dto.message,
       questionnaire.code,
       {
@@ -269,17 +269,18 @@ export class ConversationService {
       });
       return;
     } else  {
-      const sender: ChannelSender = await this.senderFactory.getSender(conversation.channelId);
+      const sender: ChannelSender = await this.channelSenderFactory.getSender(conversation.channelId);
       const participant = await this.participantService.findOne(
         conversation.participantId,
       );
+      this.logger.log(`sendQuestion conversationId=${conversation.id} participantId=${conversation.participantId} moderatorId=${conversation.moderatorId}`);
       const moderator = await this.participantService.findOne(
         conversation.moderatorId,
       );
 
       let message = this.questionProcessor.askQuestion(question, conversation);
 
-      await sender.sendMessage(moderator, participant, question.attribute, message, {//NOTE: participants are reversed here
+      await sender.sendMessage(moderator!, participant!, question.attribute, message, {//NOTE: participants are reversed here
         channelId: conversation.channelId,
         conversationId: conversation.id,
         questionnaireCode: conversation.questionnaireId,
@@ -302,7 +303,7 @@ export class ConversationService {
 
   private async sendInitMessage(channelId: string,  moderator: ParticipantDomain, participant: ParticipantDomain, message?: string) {
     const resentMessage = false
-    const channel = await this.senderFactory.getSender(channelId);
+    const channel = await this.channelSenderFactory.getSender(channelId);
     const questionnaires = await this.questionnaireService.getInitQuestionnaires();
     if (!message)
       message = `Please select an action \n${(questionnaires).map(q => `${q.code}: ${q.name.substring(0, 23)}`).join('\n')}`
@@ -318,10 +319,10 @@ export class ConversationService {
     questionId?: string,
     questionAttribute?: string
   ) {
-    const channelSender = await this.senderFactory.getSender(conversation.channelId);
+    const channelSender = await this.channelSenderFactory.getSender(conversation.channelId);
     const sender = await this.participantService.findOne(conversation.moderatorId);
     const receiver = await this.participantService.findOne(conversation.participantId);
-    await channelSender.sendMessage(sender, receiver, questionAttribute || questionId || 'continue', message, {
+    await channelSender.sendMessage(sender!, receiver!, questionAttribute || questionId || 'continue', message, {
       channelId: conversation.channelId,
       conversationId: conversation.id,
       source: 'conversation_service',
@@ -393,16 +394,20 @@ export class ConversationService {
 
   async processInboundMessage(
     channel: ChannelDomain,
-    moderator: ParticipantDomain,
-    participant: ParticipantDomain,
+    senderId: string,
+    receiverId: string,
     message: string,
     questionnaireCode: string,
     context: MessageContext,
   ): Promise<ConversationResponse> {
+    const participant = await this.participantService.findOne(senderId);
+    if(!participant) throw new NotFoundException('Participant not Found...')
+    const moderator = await this.participantService.findOne(receiverId);
+    if(!moderator) throw new NotFoundException('Moderator not Found...')
     this.logger.log(
-      `[flow:start] participant=${participant.id} channel=${channel.id} questionnaire=${questionnaireCode || 'n/a'}`,
+      `[flow:start] participant=${senderId} channel=${channel.id} questionnaire=${questionnaireCode || 'n/a'}`,
     );
-    let conversation = await this.conversationRepository.findActiveByParticipantId(participant.id);
+    let conversation = await this.conversationRepository.findActiveByParticipantId(senderId);
     let questionnaire: QuestionnaireDomain | null = conversation ? await this.questionnaireService.findOne(conversation.questionnaireId) : await this.questionnaireService.findByCode(questionnaireCode);
     //Scenario 1 : Input that can't be processed was provided
     if (!conversation && !questionnaire) {

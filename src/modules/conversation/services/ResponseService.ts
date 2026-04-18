@@ -32,6 +32,7 @@ export class ResponseService {
     this.logger.debug(
       `[response:inbound] conversation=${conversationId} question=${attribute} valid=${valid}`,
     );
+    await this.responseModel.updateMany({ attribute, valid: true, questionId, participantId, conversationId }, { valid: false })
     return this.responseModel.create({
       conversationId: new Types.ObjectId(conversationId),
       participantId,
@@ -78,7 +79,7 @@ export class ResponseService {
   }
 
   async getValidResponsesMapByAttribute(conversationId: string): Promise<Record<string, any>> {
-  
+
     const responses = await this.responseModel.find({
       conversationId: new Types.ObjectId(conversationId),
       direction: ResponseDirection.INBOUND,

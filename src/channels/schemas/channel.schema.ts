@@ -28,7 +28,7 @@ export class Channel {
   externalId?: string;
 
   @Prop({ type: MongooseSchema.Types.ObjectId })
-  pseudoParticipant?: Types.ObjectId;
+  pseudoParticipantId?: Types.ObjectId;
 
   @Prop({ required: true, default: true })
   isActive: boolean;

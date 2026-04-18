@@ -12,10 +12,10 @@ export class Exchange {
   @Prop({ required: true })
   channelType: string;
 
-  @Prop({ required: true, enum: Object.values(ExchangeDirection) })
+  @Prop({ type: String, required: true, enum: ExchangeDirection })
   direction: ExchangeDirection;
 
-  @Prop({ required: true, enum: Object.values(ExchangeStatus) })
+  @Prop({ type: String, required: true, enum: ExchangeStatus })
   status: ExchangeStatus;
 
   @Prop({ type: MongooseSchema.Types.ObjectId })
@@ -60,5 +60,7 @@ export class Exchange {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+export type ExchangeDocument = Exchange & Document;
 
 export const ExchangeSchema = SchemaFactory.createForClass(Exchange);

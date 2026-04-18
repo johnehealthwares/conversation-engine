@@ -9,13 +9,12 @@ import { MockInboundDto } from '../controllers/dto/mock.dto';
 @Injectable()
 export class MockProcessor implements ChannelProcessor {
   constructor(
-    private readonly conversationService: ConversationService,
     private readonly channelService: ChannelService,
     private readonly exchangeService: ExchangeService,
   ) {}
 
   async processInbound(payload: MockInboundDto) {
-    const { from, text, questionnaireCode, channelId } = payload;
+    const { senderId, receiverId, text, questionnaireCode, channelId } = payload;
     const messageId = payload.messageId || `mock-${Date.now()}`;
 
     const channel = await this.channelService.findById(channelId);
@@ -26,7 +25,8 @@ export class MockProcessor implements ChannelProcessor {
     await this.exchangeService.logInbound({
       channelId,
       channelType: ChannelType.MOCK,
-      sender: from,
+      senderId,
+      receiverId,
       message: text,
       messageId,
       questionnaireCode: questionnaireCode || text,

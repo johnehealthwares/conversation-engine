@@ -16,6 +16,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
+    "prepare": "husky",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "seed:questionnaires": "ts-node -r tsconfig-paths/register src/scripts/run-seed-questionnaires.ts"
@@ -58,6 +59,7 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
+    "husky": "^9.1.7",
     "jest": "^30.0.0",
     "mongodb-memory-server": "^11.0.1",
     "prettier": "^3.4.2",
@@ -78,7 +80,7 @@
     ],
     "rootDir": ".",
     "testEnvironment": "node",
-    "testRegex": ".e2e-spec.ts$",
+    "testRegex": ".*\\.(e2e-)?spec\\.(ts|js)$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

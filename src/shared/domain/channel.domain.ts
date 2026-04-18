@@ -10,6 +10,7 @@ export type Channel = {
 
   // Provider info
   provider?: string; // e.g. Twilio, Sendchamp, Meta
+  pseudoParticipantId: string; // e.g. Twilio, Sendchamp, Meta
   externalId?: string; // e.g. WhatsApp number or integration id
 
   // Configuration

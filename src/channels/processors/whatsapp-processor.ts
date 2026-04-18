@@ -1,24 +1,51 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, OnModuleInit } from '@nestjs/common';
 import { ChannelProcessor } from './channel.processor';
-import { ConversationService } from '../../modules/conversation/services/conversation.service';
 import { ChannelService } from '../services/channel.service';
 import { ConfigService } from '@nestjs/config';
 import { ExchangeService } from '../services/exchange.service';
-import { ChannelType } from '../../shared/domain';
+import { ChannelDomain, ChannelType, ParticipantDomain } from '../../shared/domain';
 import { WhatsAppWebhookDto } from '../controllers/dto/whatsapp.dto';
 import { WhatsappSender } from '../senders/whatsapp-sender';
+import { ParticipantService } from 'src/modules/conversation/services/participant.service';
 
 @Injectable()
-export class WhatsappProcessor implements ChannelProcessor {
+export class WhatsappProcessor implements ChannelProcessor , OnModuleInit{
   private readonly logger = new Logger(WhatsappProcessor.name);
+  private pseudoSender: ParticipantDomain;
+  private  readonly channelId: string;
+  private channel: ChannelDomain;
 
   constructor(
     private channelService: ChannelService,
-    private conversationService: ConversationService,
+    private participantService: ParticipantService,
     private configService: ConfigService,
     private exchangeService: ExchangeService,
     private whatsappSender: WhatsappSender,
-  ) {}
+  ) {
+    this.channelId = this.configService.getOrThrow('CHANNEL_ID_WHATSAPP');
+  }
+
+  async onModuleInit() {
+    const channel = await this.channelService.findById(this.channelId);
+    if (!channel) {
+      this.logger.warn(
+        `Configured WhatsApp channel was not found ${this.channelId}. WhatsApp processor will remain disabled.`,
+      );
+      throw new NotFoundException('Channel for Whatsapp not found')
+    }
+
+    this.channel = channel;
+    const pseudoSender = await this.participantService.findOne(
+      channel.pseudoParticipantId,
+    );
+     if (!pseudoSender) {
+      this.logger.warn(
+        `Configured WhatsApp channel PseudoSender was not found ${this.channel.pseudoParticipantId}. WhatsApp processor will remain disabled.`,
+      );
+      throw new NotFoundException('Channel for Whatsapp not found');
+    }
+    this.pseudoSender = pseudoSender
+  }
 
   async processInbound(payload: WhatsAppWebhookDto) {
     this.logger.log('Incoming WhatsApp webhook received');
@@ -36,9 +63,16 @@ export class WhatsappProcessor implements ChannelProcessor {
 
       const entry = payload?.entry?.[0];
       const change = entry?.changes?.[0];
-      const message = change?.value?.messages?.[0];
+      const value = change?.value;
+      const metadata = value?.metadata;
+      const receiverPhone = metadata?.phone_number_id || this.pseudoSender.phone!;
+
+      const message = value.messages?.[0];
       const context = message?.context;
-      const phone = change?.value?.contacts?.[0]?.wa_id || 'unknown';
+      const senderPhone = change?.value?.contacts?.[0]?.wa_id!;
+      
+      const sender = await this.participantService.findByPhone(senderPhone);
+      const receiver = await this.participantService.findByPhone(receiverPhone);
 
       let text;
       if (message?.interactive?.button_reply?.id) {
@@ -52,7 +86,7 @@ export class WhatsappProcessor implements ChannelProcessor {
       const messageId = message?.id || 'unknown';
       const questionnaireCode = text;
 
-      this.logger.debug(`Parsed message from ${phone}: ${text}`);
+      this.logger.debug(`Parsed message from ${sender.phone}: ${text}`);
 
       const whatsappChannelId = this.configService.getOrThrow('CHANNEL_ID_WHATSAPP');
       const channel = await this.channelService.findById(whatsappChannelId);
@@ -79,7 +113,8 @@ export class WhatsappProcessor implements ChannelProcessor {
           );
 
           await this.whatsappSender.sendMessage(
-            { phone: contextExchange?.recipient } as any,
+            receiver, //REVERSE roles as this is an immediate reply, sender is now the receiver
+            sender,
             'proceeedwithrecent',
             contextExchange!.message,
             { page, contextId: message.context.id },
@@ -95,7 +130,8 @@ export class WhatsappProcessor implements ChannelProcessor {
           );
 
           await this.whatsappSender.sendMessage(
-            { phone: contextExchange?.recipient } as any,
+            receiver,
+            sender,
             'proceeedwithrecent',
             'Please proceed with recent...',
             { contextId: message.context.id },
@@ -110,7 +146,8 @@ export class WhatsappProcessor implements ChannelProcessor {
       const exchange = await this.exchangeService.logInbound({
         channelId: channel.id,
         channelType: ChannelType.WHATSAPP,
-        sender: phone,
+        senderId: sender.id,
+        receiverId: receiver.id,
         message: text,
         messageId,
         questionnaireCode,

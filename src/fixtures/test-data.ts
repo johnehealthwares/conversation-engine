@@ -203,7 +203,7 @@ export const satisfactionQuestion = (questionnaireId: string): CreateQuestionDto
   questionType: QuestionType.SINGLE_CHOICE,
   renderMode: RenderMode.RADIO,
   processMode: ProcessMode.NONE,
-  index: 5,
+  index: 7,
   isRequired: true,
   isActive: true,
   options: [
@@ -222,7 +222,7 @@ export const riskLevelQuestion = (questionnaireId: string): CreateQuestionDto =>
   questionType: QuestionType.SINGLE_CHOICE,
   renderMode: RenderMode.RADIO,
   processMode: ProcessMode.NONE,
-  index: 6,
+  index: 8,
   isRequired: true,
   isActive: true,
   options: [
@@ -240,7 +240,7 @@ export const ageGroupQuestion = (questionnaireId: string): CreateQuestionDto => 
   questionType: QuestionType.SINGLE_CHOICE,
   renderMode: RenderMode.RADIO,
   processMode: ProcessMode.NONE,
-  index: 7,
+  index: 9,
   isRequired: true,
   isActive: true,
   options: [
@@ -348,7 +348,7 @@ export const yesNoQuestion = (
 ): CreateQuestionDto =>
   createQuestionWithEmbeddedOptions(
     questionnaireId,
-    0,
+    5,
     'Do you have any chronic conditions?',
     [
       { key: 'yes', label: 'Yes', value: 'yes', index: 0 },
@@ -362,7 +362,7 @@ export const frequencyQuestion = (
 ): CreateQuestionDto =>
   createQuestionWithEmbeddedOptions(
     questionnaireId,
-    1,
+    6,
     'How often do you exercise?',
     [
       { key: 'daily', label: 'Daily', value: 'daily', index: 0 },

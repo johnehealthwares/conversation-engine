@@ -1,24 +1,64 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, OnModuleInit, NotFoundException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { ChannelSender, SendMediaPayload } from './channel-sender';
-import { ExchangeStatus, ParticipantDomain } from '../../shared/domain';
+import { ChannelDomain, ExchangeStatus, ParticipantDomain } from '../../shared/domain';
 import { ExchangeService } from '../services/exchange.service';
 import { Types } from 'mongoose';
-import { Channel } from 'src/shared/domain/channel.domain';
+import { ChannelService } from '../services/channel.service';
+import { ParticipantService } from 'src/modules/conversation/services/participant.service';
 
 @Injectable()
-export class NigeriaBulkSmsSender implements ChannelSender {
+export class NigeriaBulkSmsSender implements ChannelSender, OnModuleInit {
+    private readonly logger = new Logger(NigeriaBulkSmsSender.name);
+  
   private readonly baseUrl =
     'https://portal.nigeriabulksms.com/api/';
 
-  private channel: Channel;
+  private channel: ChannelDomain;
+  private pseudoParticipant: ParticipantDomain;
 
   constructor(
     private readonly configService: ConfigService,
     private readonly exchangeService: ExchangeService,
+   private readonly channelService: ChannelService,
+    private readonly participantService: ParticipantService
   ) { }
 
+
+  async onModuleInit() {
+    this.logger.log('NigeriaBulkSmsSender initialized');
+    const channelId = this.configService.get<string>('CHANNEL_ID_SMS_NBSMS');
+    if (!channelId) {
+      this.logger.warn('No CHANNEL_ID_SMS_NBSMS configured; SMS sender is disabled.');
+      return;
+    }
+
+    const channel = await this.channelService.findById(channelId);
+    if (!channel) {
+      this.logger.warn(`SMS channel not found (${channelId}); SMS sender will remain disabled.`);
+      return;
+    }
+
+    this.channel = channel;
+    const participant = await this.participantService.findOne(channel.pseudoParticipantId);
+    if (!participant) {
+      this.logger.warn(
+        `Default participant for SMS channel ${channelId} not found; SMS sender will remain disabled.`,
+      );
+      return;
+    }
+    this.pseudoParticipant = participant;
+  }
+
+  getChannel(): ChannelDomain {
+    return this.channel;
+  }
+
+
+  getPseudoParticipant(): ParticipantDomain {
+    return this.pseudoParticipant;
+  }
 
   formatNigerianNumber(phone): string {
     // Remove all non-numeric characters

@@ -14,6 +14,8 @@ export class Conversation {
   _id: Types.ObjectId
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: Participant.name, required: true })
   participantId: Types.ObjectId
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: Participant.name, required: true })
+  moderatorId: Types.ObjectId
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: Channel.name, required: true })
   channelId: Types.ObjectId
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: Questionnaire.name, required: true })

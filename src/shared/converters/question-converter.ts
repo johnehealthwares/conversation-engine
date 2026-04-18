@@ -48,12 +48,24 @@ export function mapQuestionDomainToShcema({id, ...question}: QuestionDomain): Qu
     ...question,
     ...(id ? { _id: id } : {}),
     options: question.options?.map((option) => ({
-      _id: option.id ? new MongooseSchema.Types.ObjectId(option.id) : new Types.ObjectId(),
+      _id: option.id ? new Types.ObjectId(option.id) : new Types.ObjectId(),
       ...option,
     })),
   };
   if (question.optionListId) {
-    schema.optionListId = new MongooseSchema.Types.ObjectId(question.optionListId);
+    const optionListId = question.optionListId;
+    if (typeof optionListId === 'string' || typeof optionListId === 'number') {
+      schema.optionListId = new Types.ObjectId(optionListId);
+    } else if (
+      optionListId instanceof Types.ObjectId ||
+      optionListId instanceof MongooseSchema.Types.ObjectId
+    ) {
+      schema.optionListId = optionListId;
+    } else {
+      schema.optionListId = new Types.ObjectId(
+        optionListId?.toString?.() ?? optionListId,
+      );
+    }
   }
   return schema;
 

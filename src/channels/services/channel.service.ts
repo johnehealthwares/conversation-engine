@@ -69,12 +69,8 @@ export class ChannelService {
     return toDomain(channels);
   }
 
-  async findOne(id: string): Promise<ChannelDomain> {
-    const channel = await this.findById(id);
-    if (!channel) {
-      throw new NotFoundException('Channel not found');
-    }
-
+  async findOne(id: string): Promise<ChannelDomain | null> {
+    const channel = await this.findById(id)
     return channel;
   }
 

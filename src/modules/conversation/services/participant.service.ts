@@ -30,40 +30,69 @@ export class ParticipantService {
     })
   }
 
+  private async findExistingParticipantByPhone(phoneIn: string): Promise<ParticipantDomain | null> {
+    const formattedPhone = this.formatPhoneNigeriaMobilePhone(phoneIn);
+    const candidatePhones = Array.from(new Set([phoneIn, formattedPhone]));
+
+    for (const phone of candidatePhones) {
+      const participant = await this.participantRepo.findByPhone(phone);
+      if (participant) {
+        return participant;
+      }
+    }
+
+    return null;
+  }
+
   async createParticipant(participant: ParticipantDomain) {
     this.logger.debug(`[participant:create] Resolving participant phone=${participant.phone || 'n/a'}`);
     const result = participant.phone
-      ? await this.participantRepo.findByPhone(participant.phone)
+      ? await this.findExistingParticipantByPhone(participant.phone)
       : participant.email
         ? await this.participantRepo.findByEmail(participant.email)
         : null;
-    if(result) {
+    if (result) {
       this.logger.verbose(`[participant:create] Reusing existing participant id=${result.id}`);
       return result;
     }
     const schema = await this.participantRepo.create(participant);
     const domain = toDomain(schema);
     this.logger.log(`[participant:create] Created participant id=${domain.id || participant.id}`);
-    return domain
+    return domain;
   }
 
-   async findOne(id: string) : Promise<ParticipantDomain>{
+  async findOne(id: string) : Promise<ParticipantDomain | null>{
       this.logger.debug(`[participant:find-one] id=${id}`);
       const participant = await this.participantRepo.findById(id);
-        if (!participant) throw new NotFoundException('Participant not found');
-      return participant;
+      return toDomain(participant);
     }
 
 
-  async findByPhone(phone: string) : Promise<ParticipantDomain | null>{
-      this.logger.debug(`[participant:find-phone] phone=${phone}`);
-      const participant = await this.participantRepo.findByPhone(phone);
+  async findByPhone(phoneIn: string) : Promise<ParticipantDomain>{
+      const phone = this.formatPhoneNigeriaMobilePhone(phoneIn);
+      this.logger.debug(`[participant:find-phone] input=${phoneIn} formatted=${phone}`);
+      const participant = await this.findExistingParticipantByPhone(phoneIn);
       if(!participant) return this.createParticipant({
         phone,
         id: new Types.ObjectId().toString()
       })
       return participant;
     }
+
+  
+  async findBy(phoneIn: string, email: string) : Promise<ParticipantDomain>{
+      const phone = this.formatPhoneNigeriaMobilePhone(phoneIn);
+      this.logger.debug(`[participant:find-phone] phone=${phone}`);
+      const emailParticipant = await this.participantRepo.findByPhone(phone);
+      const phoneParticipant = await this.participantRepo.findByEmail(email);
+      if(!emailParticipant && !phoneParticipant) return this.createParticipant({
+        phone,
+        email,
+        id: new Types.ObjectId().toString()
+      })
+      return phoneParticipant || emailParticipant!;
+    }
+
 
   async findByEmail(email: string) : Promise<ParticipantDomain | null>{
       this.logger.debug(`[participant:find-email] email=${email}`);
@@ -101,4 +130,17 @@ export class ParticipantService {
     await this.findOne(id);
     return this.conversationRepo.findAll({ participantId: id });
   }
+
+   formatPhoneNigeriaMobilePhone(phone: string): string {
+    let cleaned = ('' + phone).replace(/\D/g, '');
+
+    if (cleaned.startsWith('0') && cleaned.length === 11) {
+      cleaned = '234' + cleaned.substring(1);
+    } else if (cleaned.length === 10) {
+      cleaned = '234' + cleaned;
+    }
+
+    return cleaned;
+  }
+
 }

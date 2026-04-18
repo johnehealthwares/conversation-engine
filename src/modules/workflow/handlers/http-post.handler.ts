@@ -133,7 +133,9 @@ export async function handleHttp(
       ...(nextConfig.params || {}),
       ...mapData(state, nextConfig.queryMapping),
     };
-    const body = mapData({ ...state, ...nextConfig}, nextConfig.requestBodyMapping);
+    const requestBodyMapping =
+      nextConfig.requestBodyMapping || nextConfig.mapping || nextConfig.requestBodyMapping;
+    const body = mapData({ ...state, ...nextConfig }, requestBodyMapping);
 
     logger.log(`HTTP ${method} Request → ${nextConfig.url}`);
     logger.debug({

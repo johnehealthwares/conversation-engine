@@ -1,13 +1,12 @@
 import { Inject, Injectable, Logger, OnModuleInit, forwardRef } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Types } from 'mongoose';
 
 import { WhatsAppWebhookDto } from '../controllers/dto/whatsapp.dto';
 import { ConversationService } from '../../modules/conversation/services/conversation.service';
 import { ChannelDomain, ExchangeDirection, ExchangeDomain, ExchangeStatus } from '../../shared/domain';
 import { FilterExchangeDto } from '../controllers/dto/filter-exchange.dto';
 import { Exchange } from '../schemas/exchange.schema';
-import { toDomain } from 'src/shared/converters';
+import { ExchangeRepository } from '../repositories/exchange.repository';
 type CreateExchangePayload = Partial<Exchange> & {
   channelType: string;
   direction: ExchangeDirection;
@@ -20,15 +19,14 @@ export class ExchangeService implements OnModuleInit {
   private readonly logger = new Logger(ExchangeService.name);
 
   constructor(
-    @InjectModel(Exchange.name)
-    private readonly exchangeModel: Model<Exchange>,
-    @Inject(forwardRef(() => ConversationService))
+    private readonly exchangeRepository: ExchangeRepository,
+    @Inject(forwardRef(() => ConversationService),)
     private readonly conversationService: ConversationService
   ) { }
 
   onModuleInit() {
     this.logger.log('[exchange:watch] Starting Mongo change stream for exchanges.');
-    const changeStream = this.exchangeModel.watch();
+    const changeStream = this.exchangeRepository.watch();
 
     changeStream.on('error', (error: any) => {
       if (error?.code === 40573) {
@@ -47,8 +45,8 @@ export class ExchangeService implements OnModuleInit {
         id = fullDocument._id;
         direction = fullDocument?.direction;
         status = fullDocument.status;
-        const { channelId, messageId, questionnaireCode, sender, receiver, message } = fullDocument as Exchange;
-        info = `message: (${message.substring(0, 100)}...) ${direction === ExchangeDirection.INBOUND ? 'received from ' : 'returned to '} ${sender} `;
+        const { channelId, messageId, questionnaireCode, senderId, receiverId, message } = fullDocument as Exchange;
+        info = `message: (${message.substring(0, 100)}...) ${direction === ExchangeDirection.INBOUND ? 'received from ' : 'returned to '} ${senderId} `;
         if (direction === ExchangeDirection.INBOUND) {
           this.logger.debug(
             `[exchange:ingest] Forwarding inbound exchange messageId=${messageId} questionnaire=${questionnaireCode || 'n/a'}`,
@@ -57,13 +55,13 @@ export class ExchangeService implements OnModuleInit {
             channelId,
             messageId,
             questionnaireId: questionnaireCode || '',
-            receiver,
-            sender,
+            receiver: receiverId.toString(),
+            sender: senderId.toString(),
             state: {},
-            value: message 
+            value: message
           }
-    
-          this.conversationService.processInboundMessage({ id: channelId! } as ChannelDomain, sender!, receiver, message, questionnaireCode!,  context);
+
+          this.conversationService.processInboundMessage({ id: channelId! } as ChannelDomain, receiverId.toString(), senderId.toString(), message, questionnaireCode!, context);
         }
       } else if (operationType === 'update') {
         id = 'id'
@@ -81,7 +79,7 @@ export class ExchangeService implements OnModuleInit {
 
   async create(payload: CreateExchangePayload): Promise<ExchangeDomain> {
     payload._id = new Types.ObjectId();
-    return toDomain(await this.exchangeModel.create(payload));
+    return this.exchangeRepository.create(payload as any);
   }
 
   async findAll(filter: FilterExchangeDto = {}): Promise<ExchangeDomain[]> {
@@ -104,8 +102,7 @@ export class ExchangeService implements OnModuleInit {
         { questionnaireCode: regex },
       ];
     }
-    const schemas = await this.exchangeModel.find(query).sort({ createdAt: -1 }).lean()
-    return schemas.map(toDomain);
+    return this.exchangeRepository.find(query);
   }
 
   async logOutbound(payload: {
@@ -121,24 +118,24 @@ export class ExchangeService implements OnModuleInit {
     rawPayload?: Record<string, any>;
     status?: ExchangeStatus;
   }): Promise<ExchangeDomain> {
-    const received = await this.exchangeModel.findOne({ messageId: payload.messageId })
-    const answered = await this.exchangeModel.findOne({ messageId: payload.metadata?.contextId })
+    const received = await this.exchangeRepository.findOne({ messageId: payload.messageId })
+    const answered = await this.exchangeRepository.findOne({ messageId: payload.metadata?.contextId })
     if (received) {
       this.logger.warn(
         `[exchange:dedupe] Outbound exchange already exists for messageId=${payload.messageId}`,
       );
       return received;
     }
-    if (answered){
+    if (answered) {
       this.logger.warn(
         `[exchange:dedupe] Outbound exchange matched existing contextId=${payload.metadata?.contextId}`,
       );
       return answered;
     }
     this.logger.debug(
-      `[exchange:outbound] Logging outbound messageId=${payload.messageId} sender=${payload.sender} receiver=${payload.receiver}`,
+      `[exchange:outbound] Logging outbound messageId=${payload.messageId} sender=${payload.senderId} receiver=${payload.receiverId}`,
     );
-    connst   this.create({
+    return this.create({
       _id: new Types.ObjectId(),
       channelId: payload.channelId,
       channelType: payload.channelType,
@@ -158,7 +155,8 @@ export class ExchangeService implements OnModuleInit {
   async logInbound(payload: {
     channelId?: string;
     channelType: string;
-    sender: string;
+    senderId: string;
+    receiverId: string;
     message: string;
     messageId: string;
     conversationId?: string;
@@ -167,29 +165,30 @@ export class ExchangeService implements OnModuleInit {
     rawPayload?: Record<string, any>;
     status?: ExchangeStatus;
     isNavigationRequest?: boolean
-  }): Promise<Exchange> {
-    const received = await this.exchangeModel.findOne({ messageId: payload.messageId })
-    const answered = await this.exchangeModel.findOne({ messageId: payload.metadata?.contextId })
+  }): Promise<ExchangeDomain> {
+    const received = await this.exchangeRepository.findOne({ messageId: payload.messageId })
+    const answered = await this.exchangeRepository.findOne({ messageId: payload.metadata?.contextId })
     if (received) {
       this.logger.warn(
         `[exchange:dedupe] Inbound exchange already exists for messageId=${payload.messageId}`,
       );
       return received;
     }
-    if (answered){
+    if (answered) {
       this.logger.warn(
         `[exchange:dedupe] Inbound exchange matched existing contextId=${payload.metadata?.contextId}`,
       );
     }
     this.logger.debug(
-      `[exchange:inbound] Logging inbound messageId=${payload.messageId} sender=${payload.sender}`,
+      `[exchange:inbound] Logging inbound messageId=${payload.messageId} sender=${payload.senderId}`,
     );
     const exchange = await this.create({
       channelId: payload.channelId,
       channelType: payload.channelType,
       direction: payload.isNavigationRequest ? ExchangeDirection.PAGE_REQUEST : ExchangeDirection.INBOUND,
       status: payload.status || ExchangeStatus.RECEIVED,
-      sender: payload.sender,
+      senderId: new Types.ObjectId(payload.senderId),
+      receiverId: new Types.ObjectId(payload.receiverId),
       message: payload.message,
       messageId: payload.messageId,
       conversationId: payload.conversationId,
@@ -206,7 +205,7 @@ export class ExchangeService implements OnModuleInit {
         result
       }
     };
-    await this.exchangeModel.findByIdAndUpdate(exchangeId, update)
+    await this.exchangeRepository.updateById(exchangeId, update);
   }
 
   async updateExchangeFromWhatsappStatus(payload: WhatsAppWebhookDto) {
@@ -241,21 +240,20 @@ export class ExchangeService implements OnModuleInit {
           break;
       }
 
-      await this.exchangeModel.updateOne(
+      await this.exchangeRepository.updateOne(
         { messageId },
         { $set: update },
       );
     }
   }
 
-  async findExchangeByMessageId(messageId: string): Promise<Exchange | null> {
-    const exchange = await this.exchangeModel.findOne({messageId}).lean()
-    return exchange;
+  async findExchangeByMessageId(messageId: string): Promise<ExchangeDomain | null> {
+    return this.exchangeRepository.findByMessageId(messageId);
   }
 
-  async isMostRecentOutboundExchange(exchange: Exchange): Promise<Boolean> {
-    const mostRecent = await this.exchangeModel.findOne({direction:  ExchangeDirection.OUTBOUND}, {_id: -1}).sort( {createdAt: -1}).lean()
-    return exchange._id.equals(mostRecent?._id);
+  async isMostRecentOutboundExchange(exchange: ExchangeDomain): Promise<boolean> {
+    const mostRecent = await this.exchangeRepository.findMostRecentOutbound();
+    return exchange.id === mostRecent?.id;
   }
 
   // async processInbound(exchange: Exchange) {

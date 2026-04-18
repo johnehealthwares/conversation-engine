@@ -29,6 +29,7 @@ import {
 import { ChannelSenderFactory } from '../senders/channel-sender-factory';
 import { ParticipantDomain } from '../../shared/domain';
 import { FilterChannelDto } from './dto/filter-channel.dto';
+import { ParticipantService } from 'src/modules/conversation/services/participant.service';
 
 @ApiTags('Channels')
 @Controller('channels')
@@ -37,6 +38,7 @@ export class ChannelController {
 
   constructor(
     private readonly channelService: ChannelService,
+    private readonly participantService: ParticipantService,
     private readonly senderFactory: ChannelSenderFactory,
   ) {}
 
@@ -76,9 +78,13 @@ export class ChannelController {
     this.logger.log(
       `[channel:send-message] channel=${dto.channelId} recipient=${dto.email} ${dto.phone}`,
     );
-    const sender = await this.senderFactory.getSender(dto.channelId);
-    await sender.sendMessage(
-      this.buildDirectParticipant(dto),
+    const channelService = await this.senderFactory.getSender(dto.channelId);
+   const sender = channelService.getPseudoParticipant()
+   const receiver  = await this.participantService.findBy(dto.phone, dto.email);
+    
+    await channelService.sendMessage(
+      sender,
+      receiver,
       dto.title,
       dto.message,
       { channelId: dto.channelId, source: 'channel_controller', containsLink: dto.previewLink },
@@ -95,9 +101,11 @@ export class ChannelController {
     this.logger.log(
       `[channel:send-message:path] channel=${channelId} recipient=${dto.phone} ${dto.email}`,
     );
-    const sender = await this.senderFactory.getSender(channelId);
-    await sender.sendMessage(
-      this.buildDirectParticipant(dto),
+    const channelService = await this.senderFactory.getSender(channelId);
+    const receiver = await this.participantService.findBy(dto.phone, dto.email);
+    await channelService.sendMessage(
+      channelService.getPseudoParticipant(),
+      receiver,
       dto.title,
       dto.message,
       { channelId, source: 'channel_controller', containsLink: dto.previewLink },
@@ -117,16 +125,17 @@ export class ChannelController {
     this.logger.log(
       `[channel:send-media] channel=${dto.channelId} recipient=${dto.phone} file=${dto.fileName || file?.originalname || dto.fileUrl || 'n/a'}`,
     );
-    const sender = await this.senderFactory.getSender(dto.channelId);
-    if (!sender.sendMedia) {
-      throw new BadRequestException('Media sending not supported for this channel');
-    }
+    const channelService = await this.senderFactory.getSender(dto.channelId);
+
 
     if (!file && !dto.fileUrl) {
       throw new BadRequestException('Provide file or fileUrl');
     }
 
-    await sender.sendMedia(this.buildDirectParticipant(dto), {
+    await channelService.sendMedia(
+      channelService.getPseudoParticipant(),
+      await this.participantService.findBy(dto.phone, dto.email),
+      {
       documentType: dto.documentType,
       file,
       fileUrl: dto.fileUrl,
@@ -139,14 +148,4 @@ export class ChannelController {
     return { success: true };
   }
 
-  private buildDirectParticipant(dto): ParticipantDomain {
-    const {email, phone} = dto;
-    return {
-      id: 'direct-send',
-      firstName: 'Direct',
-      lastName: 'Recipient',
-      email,
-      phone,
-    };
-  }
 }

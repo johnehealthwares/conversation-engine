@@ -16,7 +16,7 @@ export type WorkflowDataMappingEntry =
   | {
       path: string;
       default?: any;
-      transform?: 'number' | 'string' | 'boolean';
+      transform?: 'number' | 'string' | 'boolean' | { prepend?: string; append?: string };
       validation?: WorkflowDataMappingValidation;
       map?: {
         key: string;

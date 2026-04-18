@@ -29,7 +29,6 @@ export class WorkflowProcessorService {
         state,
         {
           ...context,
-          flowId: context.flowId,
           workflowInstanceId: workflowInstance.id,
         },
         { source: 'conversation-module' },

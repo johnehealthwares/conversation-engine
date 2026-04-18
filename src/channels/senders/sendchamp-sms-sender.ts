@@ -1,66 +1,96 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus, OnModuleInit, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { ChannelSender, SendMediaPayload } from './channel-sender';
-import { ParticipantDomain } from '../../shared/domain';
+import { ChannelDomain, ExchangeStatus, ParticipantDomain } from '../../shared/domain';
 import { ExchangeService } from '../services/exchange.service';
-import { ExchangeStatus } from '../schemas/exchange.schema';
 import { Types } from 'mongoose';
+import { ParticipantService } from 'src/modules/conversation/services/participant.service';
+import { ChannelService } from '../services/channel.service';
+import { Channel } from 'src/shared/domain/channel.domain';
 
 @Injectable()
-export class SendChampSmsSender implements ChannelSender {
+export class SendChampSmsSender implements ChannelSender, OnModuleInit {
+  private readonly logger = new Logger(SendChampSmsSender.name);
+
   private readonly baseUrl =
     'https://api.sendchamp.com/api/v1/sms/send';
 
+  private channel: ChannelDomain;
+  private pseudoParticipant: ParticipantDomain;
+  private senderName: string;
+  private apiKey: string;
+
   constructor(
     private readonly configService: ConfigService,
+    private readonly participantService: ParticipantService,
     private readonly exchangeService: ExchangeService,
-  ) {}
+    private readonly channelService: ChannelService,
+  ) {
 
-  private formatPhone(phone: string): string {
-    let cleaned = ('' + phone).replace(/\D/g, '');
-
-    if (cleaned.startsWith('0') && cleaned.length === 11) {
-      cleaned = '234' + cleaned.substring(1);
-    } else if (cleaned.length === 10) {
-      cleaned = '234' + cleaned;
+  }
+  async onModuleInit() {
+    this.logger.log('SendChampSmsSender initialized');
+    const channelId = this.configService.get<string>('CHANNEL_ID_WHATSAPP');
+    if (!channelId) {
+      this.logger.warn('No CHANNEL_ID_WHATSAPP configured; SendChamp SMS sender is disabled.');
+      return;
     }
 
-    return cleaned;
+    const channel = await this.channelService.findById(channelId);
+    if (!channel) {
+      this.logger.warn(
+        `WhatsApp channel not found (${channelId}); SendChamp SMS sender will remain disabled.`,
+      );
+      return;
+    }
+
+    this.channel = channel;
+    const participant = await this.participantService.findOne(channel.pseudoParticipantId);
+    if (!participant) {
+      this.logger.warn(
+        `Default Participant for WhatsApp channel ${channelId} not found; SendChamp SMS sender will remain disabled.`,
+      );
+      return;
+    }
+    this.pseudoParticipant = participant;
+
   }
 
+  getChannel(): ChannelDomain {
+    return this.channel;
+  }
+
+
+  getPseudoParticipant(): ParticipantDomain {
+    return this.pseudoParticipant;
+  }
+
+
+
   async sendMessage(
-    participant: ParticipantDomain,
+    sender: ParticipantDomain,
+    receiver: ParticipantDomain,
     title: string,
     message: string,
     context: Record<string, any> = {},
   ): Promise<void> {
     try {
-      const apiKey =
-        this.configService.get<string>('SENDCHAMP_API_KEY') || '';
-      const senderName =
-        this.configService.get<string>('SENDCHAMP_SENDER') ||
-        'Healthstack';
 
-      if (!apiKey) {
-        throw new Error('SendChamp API key is not configured');
-      }
-
-      const formattedPhone = this.formatPhone(participant.phone!);
 
       const payload = {
-        to: [formattedPhone],
+        to: [this.participantService.formatPhoneNigeriaMobilePhone(receiver.phone!)],
         message: (`${title ? `*${title}*: ` : ''}${message}`).substring(
           0,
           1600,
         ),
         route: 'non_dnd',
-        sender_name: senderName,
+        sender_name: this.senderName,
       };
 
       const res = await axios.post(this.baseUrl, payload, {
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
@@ -73,7 +103,8 @@ export class SendChampSmsSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: 'SMS',
-        recipient: participant.phone!,
+        receiverId: receiver.id!,
+        senderId: sender.id,
         message,
         messageId: new Types.ObjectId().toString(),
         conversationId: context?.conversationId,
@@ -88,7 +119,8 @@ export class SendChampSmsSender implements ChannelSender {
       await this.exchangeService.logOutbound({
         channelId: context?.channelId,
         channelType: 'SMS',
-        recipient: participant.phone!,
+        receiverId: receiver.id!,
+        senderId: sender.id,
         message,
         messageId: new Types.ObjectId().toString(),
         conversationId: context?.conversationId,
@@ -109,18 +141,19 @@ export class SendChampSmsSender implements ChannelSender {
   }
 
   async sendMedia(
-    participant: ParticipantDomain,
+    sender: ParticipantDomain,
+    receiver: ParticipantDomain,
     payload: SendMediaPayload,
   ): Promise<void> {
     // SendChamp SMS doesn’t support real media → fallback to link
     return this.sendMessage(
-      participant,
+      sender,
+      receiver,
       payload?.title || '',
-      `${payload?.message || ''} ${
-        payload?.fileUrl ||
-        payload?.fileName ||
-        payload?.file?.filename ||
-        ''
+      `${payload?.message || ''} ${payload?.fileUrl ||
+      payload?.fileName ||
+      payload?.file?.filename ||
+      ''
       }`,
       payload?.context,
     );

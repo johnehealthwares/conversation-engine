@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, UpdateQuery } from 'mongoose';
 
 import { Exchange, ExchangeDocument } from '../schemas/exchange.schema';
 import { ExchangeDomain } from '../../shared/domain';
@@ -24,7 +24,7 @@ export class ExchangeRepository {
   /**
    * Find many → domain[]
    */
-  async find(query: FilterQuery<Exchange>): Promise<ExchangeDomain[]> {
+  async find(query: Record<string, any>): Promise<ExchangeDomain[]> {
     const docs = await this.exchangeModel
       .find(query)
       .sort({ createdAt: -1 })
@@ -36,7 +36,7 @@ export class ExchangeRepository {
   /**
    * Find one → domain
    */
-  async findOne(query: FilterQuery<Exchange>): Promise<ExchangeDomain | null> {
+  async findOne(query: Record<string, any>): Promise<ExchangeDomain | null> {
     const doc = await this.exchangeModel.findOne(query).lean();
     return doc ? toDomain(doc) : null;
   }
@@ -63,7 +63,7 @@ export class ExchangeRepository {
    * Update one
    */
   async updateOne(
-    query: FilterQuery<Exchange>,
+    query: Record<string, any>,
     update: UpdateQuery<Exchange>,
   ): Promise<void> {
     await this.exchangeModel.updateOne(query, update);

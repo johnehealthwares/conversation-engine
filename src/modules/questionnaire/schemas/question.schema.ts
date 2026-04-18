@@ -106,3 +106,11 @@ export class Question {
 
 export type QuestionDocument = Question & Document;
 export const QuestionSchema = SchemaFactory.createForClass(Question);
+QuestionSchema.index(
+  { questionnaireId: 1, index: 1 },
+  { unique: true }
+);
+QuestionSchema.index(
+  { questionnaireId: 1, attribute: 1 },
+  { unique: true }
+);

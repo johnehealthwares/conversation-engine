@@ -63,7 +63,7 @@ export class ChannelWebhookController {
   @ApiBody({ type: MockInboundDto })
   async mock(@Body() payload: MockInboundDto) {
     this.logger.log(
-      `[webhook:ingest] Mock payload received :: channel=${payload.channelId} from=${payload.from}`,
+      `[webhook:ingest] Mock payload received :: channel=${payload.channelId} from=${payload.senderId} to=${payload.receiverId}`,
     );
     return this.mockProcessor.processInbound(payload);
   }

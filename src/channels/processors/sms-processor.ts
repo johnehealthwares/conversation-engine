@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { ConversationService } from "../../modules/conversation/services/conversation.service";
 import { ChannelProcessor } from "./channel.processor";
 import { ChannelService } from "../services/channel.service";
 import { ExchangeService } from "../services/exchange.service";
 import { ChannelType } from "../../shared/domain";
+import { ParticipantService } from "src/modules/conversation/services/participant.service";
 
 @Injectable()
 export class SmsProcessor implements ChannelProcessor {
   constructor(
-    private conversationService: ConversationService,
+    private participantService: ParticipantService,
     private channelService: ChannelService,
     private exchangeService: ExchangeService,
   ) {}
@@ -26,10 +26,14 @@ export class SmsProcessor implements ChannelProcessor {
       throw new NotFoundException('Configured SMS channel was not found');
     }
 
+    const sender = await this.participantService.findByPhone(from);
+    const receiver = await this.participantService.findOne(channel.pseudoParticipantId);
+
     await this.exchangeService.logInbound({
       channelId,
       channelType: ChannelType.SMS,
-      sender: from,
+      senderId: sender.id,
+      receiverId: receiver.id,
       message: text,
       messageId: '',
       questionnaireCode,

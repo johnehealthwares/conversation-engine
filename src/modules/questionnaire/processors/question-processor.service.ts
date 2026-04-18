@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ConversationDomain,
   ProcessMode,
@@ -45,7 +45,7 @@ export type ProcessAnswerResult =
   }
   | {
     status: ProcessAnswerStatus.WORKFLOW_HANDLING;
-    nextQuestion: QuestionDomain;
+    nextQuestion?: QuestionDomain;
     rawValue: string;
     metadata?: Record<string, any>;
   } | {
@@ -109,24 +109,6 @@ export class QuestionProcessorService {
       return modeResult;
     }
 
-
-    // ✅ 3. STORE METADATA (important for API flows) - TODO: BE intentional with this
-    // if (modeResult.metadata) {
-    //   conversation.context = {
-    //     ...conversation.context,
-    //     ...modeResult.metadata,
-    //   };
-    // }
-
-    // ✅ 4. RESOLVE NEXT QUESTION
-    // if (modeResult.status === ProcessAnswerStatus.NEXT_QUESTION) {
-    //   this.resolveNextQuestion(
-    //     conversation,
-    //     question
-    //   );
-    // }
-
-
     return modeResult;
   }
 
@@ -137,10 +119,25 @@ export class QuestionProcessorService {
     message: string,
   ): Promise<string | null> {
     const answer = message?.trim() ?? '';
-    let error = '';
+    let error: string | null = null;
 
     if (question.isRequired && !answer) {
       error = 'This question requires an answer.';
+    }
+
+    // ✅ OPTION VALIDATION (NEW 🔥)
+    if (question.options?.length) {
+      const normalized = answer.toLowerCase();
+
+      const isValid = question.options.some(
+        (o) =>
+          o.key?.trim().toLowerCase() === normalized ||
+          o.label?.trim().toLowerCase() === normalized,
+      );
+
+      if (!isValid) {
+        error = 'Invalid option - ' + answer;
+      }
     }
 
     for (const rule of question.validationRules ?? []) {
@@ -150,19 +147,21 @@ export class QuestionProcessorService {
           answer,
           question.options?.map((opt) => opt.key),
         );
+        if (error) break;
+
       }
 
-      const ruleError = await this.applyRule(answer, rule);
-      if (ruleError) error = ruleError;
+      error = this.applyRule(answer, rule);
+      if (error) break;
     }
 
-    return error ? error + ' ' + this.askQuestion(question) : null;
+    return error ? `${error} ${this.askQuestion(question)}` : null;
   }
 
-  private async applyRule(
+  private applyRule(
     value: string,
     rule: ValidationRule,
-  ): Promise<string | null> {
+  ): string | null {
     switch (rule.type) {
       case 'required':
         return !value ? rule.message || 'This field is required.' : null;
@@ -183,9 +182,6 @@ export class QuestionProcessorService {
           ? null
           : rule.message || 'Invalid format';
 
-      case 'api':
-        return this.validateByAPI(rule.value, value);
-
       default:
         return null;
     }
@@ -195,38 +191,37 @@ export class QuestionProcessorService {
     type: QuestionType,
     value: any,
     options?: string[],
-  ): string {
+  ): string | null {
     const v = typeof value === 'string' ? value.trim() : value;
     const opts = options?.map((o) => o.toLowerCase()) || [];
 
     switch (type) {
       case QuestionType.TEXT:
       case QuestionType.AI_OPEN:
-        return v ? '' : 'Provide a valid answer';
+        return v ? null : 'Provide a valid answer';
 
       case QuestionType.NUMBER:
-        return !isNaN(Number(v)) ? '' : 'Provide a valid number';
+        return !isNaN(Number(v)) ? null : 'Provide a valid number';
 
       case QuestionType.EMAIL:
         return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
-          ? ''
+          ? null
           : 'Provide a valid email';
 
       case QuestionType.SINGLE_CHOICE:
         return opts.includes(v?.toLowerCase())
-          ? ''
+          ? null
           : 'Select a valid option';
       case QuestionType.OBJECT_ID:
         return Types.ObjectId.isValid(v)
-          ? ''
+          ? null
           : 'Provide a valid object id';
       case QuestionType.UUID:
-        return /^[0-9a-fA-F]/.test(v)
-          ? ''
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+          ? null
           : 'Provide a valid uuid';
-
       default:
-        return '';
+        return null;
     }
   }
 
@@ -244,8 +239,8 @@ export class QuestionProcessorService {
     if (question.processMode === ProcessMode.OPTION_PROCESSED) {
       const selected = question.options?.find(
         (o) =>
-          o.key.toLowerCase() === rawValue.toLowerCase() ||
-          o.label.toLowerCase() === rawValue.toLowerCase(),
+          o.key.trim().toLowerCase() === rawValue.trim().toLowerCase() ||
+          o.label.trim().toLowerCase() === rawValue.trim().toLowerCase(),
       );
 
       if (!selected) {
@@ -255,10 +250,11 @@ export class QuestionProcessorService {
           validationMessage: 'Invalid option. ' + this.askQuestion(question),
         };
       }
+      const nextQuestion = this.resolveNextQuestion(conversation, question, selected.jumpToQuestionId)!
 
       return {
-        status: ProcessAnswerStatus.NEXT_QUESTION,
-        nextQuestion: this.resolveNextQuestion(conversation, question, selected.jumpToQuestionId)!,
+        status: nextQuestion ? ProcessAnswerStatus.NEXT_QUESTION : ProcessAnswerStatus.COMPLETED,
+        nextQuestion,
         processedValue: selected.value,
         rawValue,
       };
@@ -316,9 +312,11 @@ export class QuestionProcessorService {
     if (overrideId) {
       return questions.find((q) => q.id === overrideId) || null;
     }
-    
-    if(current.nextQuestionId){
-      return questions.find((q) => q.id === current.nextQuestionId) || null;
+
+    if (current.nextQuestionId) {
+      const question = questions.find((q) => q.id === current.nextQuestionId);
+      if (!question) return null;
+      return question;
     }
 
     // 🔹 fallback sequential

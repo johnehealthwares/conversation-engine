@@ -1,6 +1,6 @@
 import { ProcessMode, QuestionType, RenderMode } from './enums';
 import { QuestionOption } from './option.domain';
-import { ValidationRule } from '../../modules/questionnaire/domain/validation-rule.domain';
+import { ValidationRule } from './validation-rule.domain';
 
 /* -------------------- OPTION SOURCE -------------------- */
 

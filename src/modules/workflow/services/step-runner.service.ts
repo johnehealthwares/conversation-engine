@@ -278,6 +278,7 @@ export class StepRunnerService {
     };
 
     const updatedStepState = {
+      data: response,
       response,
       result: null as Record<string, any> | null,
       success: result.success,
@@ -338,11 +339,16 @@ export class StepRunnerService {
       sequence: Number(triggerEvent?.meta?.sequence ?? 0) + 1,
     };
 
+    const eventPayloadWithFlow = {
+      ...(eventPayload || {}),
+      flowId: instance.flowId,
+    };
+
     this.logger.log(`Emitting event ${primaryEvent}`);
 
     await this.eventBusService.emit(
       primaryEvent,
-      eventPayload || {},
+      eventPayloadWithFlow,
       {
         workflowInstanceId: instance.id,
         flowId: instance.flowId,
@@ -356,7 +362,7 @@ export class StepRunnerService {
       this.logger.log(`Emitting lifecycle event ${lifecycleEvent}`);
       await this.eventBusService.emit(
         lifecycleEvent,
-        eventPayload || {},
+        eventPayloadWithFlow,
         {
           workflowInstanceId: instance.id,
           flowId: instance.flowId,
