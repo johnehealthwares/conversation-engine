@@ -10,12 +10,8 @@ export class MockInboundDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  senderId: string;
+  senderPhone: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  receiverId: string;
 
   @ApiProperty()
   @IsString()

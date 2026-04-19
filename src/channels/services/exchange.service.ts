@@ -61,7 +61,7 @@ export class ExchangeService implements OnModuleInit {
             value: message
           }
 
-          this.conversationService.processInboundMessage({ id: channelId! } as ChannelDomain, receiverId.toString(), senderId.toString(), message, questionnaireCode!, context);
+          this.conversationService.processInboundMessage({ id: channelId! } as ChannelDomain, senderId.toString(), receiverId.toString(), message, questionnaireCode!, context);
         }
       } else if (operationType === 'update') {
         id = 'id'

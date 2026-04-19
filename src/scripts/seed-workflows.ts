@@ -329,7 +329,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
+            event: WorkflowEventType.ANSWER_RECEIVED,
             nextStepId: 'authenticate',
           },
         ],
@@ -559,7 +559,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
+            event: WorkflowEventType.ANSWER_RECEIVED,
             nextStepId: 'fetch_clients',
           },
         ],

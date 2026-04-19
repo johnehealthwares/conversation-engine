@@ -39,7 +39,7 @@ interface WhatsAppTemplateParams {
 export class WhatsappSender implements ChannelSender, OnModuleInit {
   private readonly logger = new Logger(WhatsappSender.name);
   private channel: ChannelDomain;
-  private readonly pseudoParticipant: ParticipantDomain;
+  private pseudoParticipant: ParticipantDomain;
 
   constructor(
     private readonly configService: ConfigService,
@@ -260,10 +260,11 @@ export class WhatsappSender implements ChannelSender, OnModuleInit {
   ): Promise<void> {
     const sender = await this.participantService.findOne(senderId);
     const receiver = await this.participantService.findOne(receiverId);
+   
     const senderConfig = config || this.getConfig();
     const type = payload.documentType || 'document';
     this.logger.log(`Sending media message`, {
-      sender: sender.phone,
+      sender: sender?.phone,
       type,
     });
     const supportedTypes = ['document', 'image', 'video', 'audio'];
@@ -304,7 +305,7 @@ export class WhatsappSender implements ChannelSender, OnModuleInit {
       const messageId = providerResponse?.messages?.[0]?.id;
 
       this.logger.log(`Media message sent`, {
-        receiver: receiver.phone,
+        receiver: receiver?.phone,
         messageId,
         type,
       });

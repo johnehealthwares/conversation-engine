@@ -84,7 +84,7 @@ export class ExchangeRepository {
   /**
    * Change stream (raw — don't map)
    */
-  watch() {
+  watch(): any {
     return this.exchangeModel.watch();
   }
 }

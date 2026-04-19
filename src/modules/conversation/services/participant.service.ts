@@ -61,7 +61,7 @@ export class ParticipantService {
     return domain;
   }
 
-  async findOne(id: string) : Promise<ParticipantDomain | null>{
+  async findOne(id: string) : Promise<ParticipantDomain>{
       this.logger.debug(`[participant:find-one] id=${id}`);
       const participant = await this.participantRepo.findById(id);
       return toDomain(participant);

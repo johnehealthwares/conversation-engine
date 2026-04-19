@@ -29,7 +29,7 @@
         type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: 'WORKFLOW_ANSWER_RECEIVED',
+            event: 'ANSWER_RECEIVED',
             nextStepId: 'authenticate',
           },
         ],
@@ -69,7 +69,7 @@
         type: WorkflowStepType.WAIT,
         transitions: [
           {
-            event: WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
+            event: WorkflowEventType.ANSWER_RECEIVED,
             nextStepId: 'router',
           },
         ],

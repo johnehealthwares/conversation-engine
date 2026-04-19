@@ -52,21 +52,21 @@ export function mapQuestionDomainToShcema({id, ...question}: QuestionDomain): Qu
       ...option,
     })),
   };
-  if (question.optionListId) {
-    const optionListId = question.optionListId;
-    if (typeof optionListId === 'string' || typeof optionListId === 'number') {
-      schema.optionListId = new Types.ObjectId(optionListId);
-    } else if (
-      optionListId instanceof Types.ObjectId ||
-      optionListId instanceof MongooseSchema.Types.ObjectId
-    ) {
-      schema.optionListId = optionListId;
-    } else {
-      schema.optionListId = new Types.ObjectId(
-        optionListId?.toString?.() ?? optionListId,
-      );
-    }
-  }
+  // if (question.optionListId) {
+  //   const optionListId = question.optionListId;
+  //   if (typeof optionListId === 'string' || typeof optionListId === 'number') {
+  //     schema.optionListId = new Types.ObjectId(optionListId);
+  //   } else if (
+  //     optionListId instanceof Types.ObjectId ||
+  //     optionListId instanceof MongooseSchema.Types.ObjectId
+  //   ) {
+  //     schema.optionListId = optionListId;
+  //   } else {
+  //     schema.optionListId = new Types.ObjectId(
+  //       optionListId?.toString?.() ?? optionListId,
+  //     );
+  //   }
+  // }
   return schema;
 
 }

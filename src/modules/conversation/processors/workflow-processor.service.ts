@@ -44,7 +44,7 @@ export class WorkflowProcessorService {
     flowId: string,
     context: MessageContext
   ): Promise<WorkflowInstanceDomain | null> {
-    this.logger.log(`[workflow:conversation-started] instance=${flowId} sender=${context.sender}`);
+    this.logger.log(`[workflow:conversation-started] instance=${flowId} questionnaire=${context.questionnaireId} sender=${context.sender}`);
     const questionnaire = await this.questionnaireService.findOne(context.questionnaireId);
     if (!questionnaire.workflowId) {
       return null;
@@ -61,7 +61,7 @@ export class WorkflowProcessorService {
   }
 
   async conversationStopped(flowId: string, context: MessageContext) {
-    this.logger.warn(`[workflow:conversation-stopped] instance=${flowId} attribute=${context.attribute}`);
+    this.logger.warn(`[workflow:conversation-stopped] instance=${flowId} ${context.state}, attribute=${context.attribute}`);
     await this.dispatch(WorkflowEventType.CONVERSATION_STOPPED, context.state, { ...context, flowId });
   }
 
@@ -70,29 +70,23 @@ export class WorkflowProcessorService {
     await this.dispatch(WorkflowEventType.QUESTION_ASKED, context.state, { ...context, flowId });
   }
 
-  async workflowAnswerReceived(flowId: string, context: MessageContext) {
-    this.logger.debug(
-      `[workflow:answer-received] instance=${flowId} attribute=${context.attribute}`,
-    );
-    await this.dispatch(
-      WorkflowEventType.WORKFLOW_ANSWER_RECEIVED,
-      context.state,
-      { ...context, flowId },
-    );
+  async answerReceived(flowId: string, context: MessageContext) {
+    this.logger.debug(`[workflow:answer-received] instance=${flowId} attribute=${context.attribute} value=${context.value}`);
+    await this.dispatch(WorkflowEventType.ANSWER_RECEIVED, context.state, { ...context, flowId });
   }
 
   async answerValid(flowId: string, context: MessageContext) {
-    this.logger.debug(`[workflow:answer-valid] instance=${flowId} attribute=${context.attribute}`);
+    this.logger.debug(`[workflow:answer-valid] instance=${flowId} attribute=${context.attribute} value=${context.value}`);
     await this.dispatch(WorkflowEventType.ANSWER_VALID,  context.state, {...context, flowId});
   }
 
   async answerInValid(flowId: string, context: MessageContext) {
-    this.logger.warn(`[workflow:answer-invalid] instance=${flowId} attribute=${context.attribute}`);
+    this.logger.warn(`[workflow:answer-invalid] instance=${flowId} attribute=${context.attribute} value=${context.value}`);
     await this.dispatch(WorkflowEventType.ANSWER_INVALID, context.state, {...context, flowId});
   }
 
   async conversationCompleted(flowId: string, context: MessageContext) {
-    this.logger.log(`[workflow:conversation-ended] instance=${flowId} attribute=${context.attribute}`);
+    this.logger.log(`[workflow:conversation-ended] instance=${flowId} state=${context.state}`);
     await this.dispatch(WorkflowEventType.CONVERSATION_COMPLETED,  context.state, {...context, flowId});
   }
 

@@ -30,7 +30,7 @@ export class ResponseService {
     metadata?: Record<string, any>,
   ) {
     this.logger.debug(
-      `[response:inbound] conversation=${conversationId} question=${attribute} valid=${valid}`,
+      `[response:inbound] conversation=${conversationId} question=${attribute} message=${message} processed=${processedAnswer} valid=${valid}`,
     );
     await this.responseModel.updateMany({ attribute, valid: true, questionId, participantId, conversationId }, { valid: false })
     return this.responseModel.create({

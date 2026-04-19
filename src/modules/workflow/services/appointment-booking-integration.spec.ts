@@ -115,7 +115,7 @@ describe('Appointment Booking Integration (Questionnaire + Workflow)', () => {
 
     // 3. User enters facility name: "General Hospital"
     // This triggers WORKFLOW_PROCESSED mode. 
-    // The Workflow Engine should catch WORKFLOW_ANSWER_RECEIVED.
+    // The Workflow Engine should catch ANSWER_RECEIVED.
     // Transition: authenticate -> fetch_facilities -> emit_facility_options
 
     // Spy on StepRunner to ensure actions are executed

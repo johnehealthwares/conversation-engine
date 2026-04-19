@@ -167,7 +167,6 @@ export type StepTransition = {
 };
 
 export enum WorkflowEventType {
-  WORKFLOW_ANSWER_RECEIVED = 'WORKFLOW_ANSWER_RECEIVED',
   WORKFLOW_ASK_OPTIONS = 'WORKFLOW_ASK_OPTIONS',
   WORKFLOW_NO_OPTIONS_FOUND = 'WORKFLOW_NO_OPTIONS_FOUND',
   ANSWER_RECEIVED = 'ANSWER_RECEIVED',
@@ -290,7 +289,7 @@ export enum WorkflowEventType {
         type: 'QUESTIONNAIRE',
         transitions: [
           {
-            event: 'WORKFLOW_ANSWER_RECEIVED',
+            event: 'ANSWER_RECEIVED',
             nextStepId: 'authenticate_facility_lookup',
           },
         ],
