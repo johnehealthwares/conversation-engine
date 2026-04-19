@@ -1,10 +1,10 @@
+import { ConsoleLogger, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { MongooseModule } from '@nestjs/mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import axios from 'axios';
 import { ConversationService } from 'src/modules/conversation/services/conversation.service';
-import { StepRunnerService } from './step-runner.service';
 import { ChannelSenderFactory } from 'src/channels/senders/channel-sender-factory';
-import { AppModule } from 'src/app.module';
 import { seedWorkflows } from 'src/scripts/seed-workflows';
 import { seedQuestionnaires } from 'src/scripts/seed-questionnaires';
 import { ProcessAnswerStatus } from 'src/modules/questionnaire/processors/question-processor.service';
@@ -12,16 +12,19 @@ import { seedChannels } from 'src/scripts/seed-channels';
 import { ConversationModule } from 'src/modules/conversation/conversation.module';
 import { ChannelsModule } from 'src/channels/channels.module';
 import { WorkflowEngineModule } from '../workflow-engine.module';
-import { ConsoleLogger } from '@nestjs/common';
+
+jest.mock('axios');
 
 jest.setTimeout(30000); // 30 seconds
 describe('Appointment Booking Integration (Questionnaire + Workflow)', () => {
-  let app: TestingModule;
+  let moduleRef: TestingModule;
+  let app: INestApplication;
   let mongoServer: MongoMemoryServer;
   let conversationService: ConversationService;
-  let stepRunnerService: StepRunnerService;
-  let senderFactory: ChannelSenderFactory;
-  process.env.MONGOMS_DOWNLOAD_DIR = './mongo-binaries'
+  const facilityId = '60203e1c1ec8a00015baa357';
+
+  process.env.MONGOMS_DOWNLOAD_DIR = './mongo-binaries';
+
   // Mock Channel Sender to capture messages sent to "user"
   const mockSender = {
     sendMessage: jest.fn().mockResolvedValue({ success: true }),
@@ -36,7 +39,7 @@ describe('Appointment Booking Integration (Questionnaire + Workflow)', () => {
     process.env.DATABASE_URI = uri; // 🔥 THIS is key
 
 
-    app = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       imports: [
         MongooseModule.forRoot(uri),
         //AppModule,
@@ -52,23 +55,59 @@ describe('Appointment Booking Integration (Questionnaire + Workflow)', () => {
       .setLogger(new ConsoleLogger())
       .compile();
 
-    conversationService = app.get<ConversationService>(ConversationService);
-    stepRunnerService = app.get<StepRunnerService>(StepRunnerService);
-    senderFactory = app.get<ChannelSenderFactory>(ChannelSenderFactory);
+    app = moduleRef.createNestApplication();
+    conversationService = moduleRef.get<ConversationService>(ConversationService);
 
     // Seed the definitions
-    const nestApp = { get: (token: any) => app.get(token) } as any;
+    const nestApp = { get: (token: any) => moduleRef.get(token) } as any;
     await seedWorkflows(nestApp);
     await seedQuestionnaires(nestApp);
     await seedChannels(nestApp);
+    await app.init();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.HS_BACKEND_BASE_URL = 'https://example.test';
+    process.env.HS_BACKEND_USERNAME = 'test@example.com';
+    process.env.HS_BACKEND_PASSWORD = 'secret';
+
+    (axios.request as jest.Mock).mockImplementation(async (config: any) => {
+      if (config.url === 'https://example.test/authentication') {
+        return {
+          data: { accessToken: 'token-123' },
+          status: 201,
+          headers: {},
+        };
+      }
+
+      if (config.url === 'https://example.test/facility') {
+        return {
+          data: {
+            total: 1,
+            data: [
+              {
+                _id: facilityId,
+                facilityName: 'General Hospital Central',
+              },
+            ],
+          },
+          status: 200,
+          headers: {},
+        };
+      }
+
+      throw new Error(`Unexpected axios.request call: ${config.url}`);
+    });
   });
 
   afterAll(async () => {
     await app.close();
+    await moduleRef.close();
     await mongoServer.stop();
   });
 
-  it.skip('should progress through the appointment booking flow and trigger workflow actions', async () => {
+  it('should progress through the appointment booking flow and trigger workflow actions', async () => {
     const participantId = '680000000000000000000001';
     const channel = { id: '680000000000000000000101', type: 'WHATSAPP' } as any;
     const questionnaireCode = 'WF_APPOINTMENT_Q';
@@ -118,28 +157,6 @@ describe('Appointment Booking Integration (Questionnaire + Workflow)', () => {
     // The Workflow Engine should catch ANSWER_RECEIVED.
     // Transition: authenticate -> fetch_facilities -> emit_facility_options
 
-    // Spy on StepRunner to ensure actions are executed
-    const executeSpy = jest.spyOn(stepRunnerService as any, 'executeAction');
-
-    // Mocking the handler response for HTTP calls within StepRunner
-    // In a real integration test, you might use 'nock' to mock the HS_BACKEND_BASE_URL
-    jest.spyOn(stepRunnerService as any, 'getHandler').mockReturnValue(async (config: any) => {
-      if (config.url.includes('authentication')) {
-        return { success: true, data: { accessToken: 'fake-token' } };
-      }
-      if (config.url.includes('facility')) {
-        return {
-          success: true,
-          data: [
-            { _id: 'fac-1', facilityName: 'General Hospital Central', index: '1' },
-            { _id: 'fac-2', facilityName: 'General Hospital North', index: '2' }
-          ],
-          total: 2
-        };
-      }
-      return { success: true, data: {} };
-    });
-
     const facilityInputResult = await conversationService.processInboundMessage(
       channel,
       participantId,
@@ -152,20 +169,33 @@ describe('Appointment Booking Integration (Questionnaire + Workflow)', () => {
     // Since actions are asynchronous/event-driven, we verify the immediate response is "PROCESSING_WORKFLOW_ANSWER"
     expect(facilityInputResult.action).toBe('PROCESSING_WORKFLOW_ANSWER');
 
-    // Wait for event loop to process workflow transitions
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Verify the workflow executed the correct steps
-    expect(executeSpy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 'authenticate' }), expect.anything());
-    expect(executeSpy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 'fetch_facilities' }), expect.anything());
-    expect(executeSpy).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 'emit_facility_options' }), expect.anything());
-
-    // Verify the final message sent to the user contains the resolved options
-    expect(mockSender.sendMessage).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('facilityId_options'),
-      expect.stringContaining('Select a facility'),
-      expect.anything(),
-    );
+    // Verify the user receives the workflow-generated options prompt
+    await waitFor(() => {
+      expect(
+        mockSender.sendMessage.mock.calls.some(
+          ([, , attribute, outboundMessage]) =>
+            attribute === 'facilityId_options' &&
+            typeof outboundMessage === 'string' &&
+            outboundMessage.includes('Select a facility'),
+        ),
+      ).toBe(true);
+    });
   });
 });
+
+async function waitFor(assertion: () => Promise<void> | void, timeoutMs = 3000) {
+  const start = Date.now();
+  let lastError: unknown;
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      await assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  throw lastError;
+}

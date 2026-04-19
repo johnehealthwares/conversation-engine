@@ -47,10 +47,15 @@ export function mapQuestionDomainToShcema({id, ...question}: QuestionDomain): Qu
   const schema: any = {
     ...question,
     ...(id ? { _id: id } : {}),
-    options: question.options?.map((option) => ({
-      _id: option.id ? new Types.ObjectId(option.id) : new Types.ObjectId(),
-      ...option,
-    })),
+    tags: Array.isArray(question.tags) ? question.tags.map(String) : [],
+    options: question.options?.map((option) => {
+      const mappedOption: any = {
+        ...option,
+        _id: option.id ? new Types.ObjectId(option.id) : new Types.ObjectId(),
+      };
+      delete mappedOption.id;
+      return mappedOption;
+    }) || [],
   };
   // if (question.optionListId) {
   //   const optionListId = question.optionListId;

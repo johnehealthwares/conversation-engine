@@ -41,7 +41,6 @@ import { ProcessConversationResponseDto } from '../controllers/dto/process-conve
 import { ChannelService } from '../../../channels/services/channel.service';
 import { WorkflowEventType } from '../../workflow/entities/step-transition';
 import { IntentService } from './intent.service';
-import { send } from 'process';
 
 
 @Injectable()
@@ -235,6 +234,24 @@ export class ConversationService {
     return { success: true };
   }
 
+  private getQuestionId(question?: Partial<QuestionDomain> | null): string | undefined {
+    if (!question) return undefined;
+
+    const candidate = (question as any).id ?? (question as any)._id;
+    if (candidate === undefined || candidate === null) return undefined;
+
+    return typeof candidate === 'string' ? candidate : String(candidate);
+  }
+
+  private findQuestionById(
+    questions: QuestionDomain[] | undefined,
+    questionId?: string,
+  ): QuestionDomain | undefined {
+    if (!questions?.length || !questionId) return undefined;
+
+    return questions.find((question) => this.getQuestionId(question) === questionId);
+  }
+
   async findActiveConversationOfParticipant(participanctId: string): Promise<ConversationDomain | null> {
     return this.conversationRepository.findActiveByParticipantId(participanctId);
   }
@@ -277,7 +294,7 @@ export class ConversationService {
         conversation.moderatorId,
       );
 
-      let message = this.questionProcessor.askQuestion(question, conversation);
+      let message = this.questionProcessor.askQuestion(question);
       this.logger.log(`sendQuestion conversationId=${conversation.id} participantId=${conversation.participantId} moderatorId=${conversation.moderatorId} ${message}`);
 
       await sender.sendMessage(moderator!, participant!, question.attribute, message, {//NOTE: participants are reversed here
@@ -335,11 +352,15 @@ export class ConversationService {
     const questions = conversation.questions ?? [];
     const questionId = conversation.currentQuestionId;
 
-    const question = questions.find((item) => item.id === questionId);
-    if (!question) {
-      throw new NotFoundException('Current question not found for conversation');
+    const question = this.findQuestionById(questions, questionId);
+    if (question) return question;
+
+    const pendingQuestion = conversation.context?.workflow?.pendingQuestion;
+    if (pendingQuestion && this.getQuestionId(pendingQuestion) === questionId) {
+      return pendingQuestion;
     }
-    return question;
+
+    throw new NotFoundException('Current question not found for conversation');
   }
 
   private async completeConversationFromAnswer(
@@ -408,9 +429,11 @@ export class ConversationService {
       `[flow:start] participant=${senderId} channel=${channel.id} questionnaire=${questionnaireCode || 'n/a'}`,
     );
     let conversation = await this.conversationRepository.findActiveByParticipantId(senderId);
-    let questionnaire: QuestionnaireDomain | null = conversation ? await this.questionnaireService.findOne(conversation.questionnaireId) : await this.questionnaireService.findByCode(questionnaireCode);
+    let questionnaire: QuestionnaireDomain | null = conversation
+      ? await this.questionnaireService.findOne(conversation.questionnaireId)
+      : await this.questionnaireService.findByCode(questionnaireCode);
     //Scenario 1 : Input that can't be processed was provided
-    if (!conversation && !questionnaire || !questionnaire?.questions?.length) {
+    if (!conversation && (!questionnaire || !questionnaire?.questions?.length)) {
       this.logger.warn(
         `[flow:init] No active conversation or questionnaire found for code=${questionnaireCode || 'n/a'}. Finding intent or Sending init message.`,
       );
@@ -515,11 +538,15 @@ export class ConversationService {
         context: { ...context, message, lastAction: ConversationReponseAction.CONVERSATION_NOT_FOUND }
       };
     }
-    if (conversation.context?.workflow?.pendingQuestion) {
+    if (
+      conversation.context?.workflow?.pendingQuestion &&
+      conversation.currentQuestionId ===
+        this.getQuestionId(conversation.context.workflow.pendingQuestion)
+    ) {
       return this.handleWorkflowResponse(
         conversation,
         participant,
-        message
+        message,
       );
     }
     const currentQuestion = await this.getCurrentQuestion(conversation);
@@ -578,13 +605,18 @@ export class ConversationService {
       };
     }
 
-    // ✅ EVENT 2 -Answer Received 
-    const state = await this.responseService.getValidResponsesMapByAttribute(conversation.id!)
-    await this.workflowProcessor.answerReceived(conversation.id, { ...context, state, attribute: currentQuestion.attribute, value: message });
-
-
     // Process Answer
     const processingResult = await this.questionProcessor.processAnswer(conversation, currentQuestion, message);
+    const state = await this.responseService.getValidResponsesMapByAttribute(conversation.id!)
+
+    if (processingResult.status !== ProcessAnswerStatus.WORKFLOW_HANDLING) {
+      await this.workflowProcessor.answerReceived(conversation.id, {
+        ...context,
+        state,
+        attribute: currentQuestion.attribute,
+        value: message,
+      });
+    }
 
     const validInboundResponse = processingResult.status !== ProcessAnswerStatus.VALIDATION_ERROR
 
@@ -607,11 +639,11 @@ export class ConversationService {
     );
 
 
-    if (validInboundResponse) {
+    if (validInboundResponse && processingResult.status !== ProcessAnswerStatus.WORKFLOW_HANDLING) {
       // ✅ EVENT 5️⃣ -Answer Valid
       this.logger.warn(`[flow:valid] conversation=${conversation.id} question=${currentQuestion.attribute} value=${processingResult.rawValue}`);
       await this.workflowProcessor.answerValid(conversation.id, { ...context, state, attribute: currentQuestion.attribute, value: (processingResult as any).processedValue });
-    } else {
+    } else if (!validInboundResponse) {
       this.logger.warn(`[flow:invalid] conversation=${conversation.id} question=${currentQuestion.attribute} value=${processingResult.rawValue}`);
       // ✅ EVENT 3️⃣ -Answer Invalid 
       await this.workflowProcessor.answerInValid(conversation.id, { ...context, state, attribute: currentQuestion.attribute });
@@ -652,12 +684,12 @@ export class ConversationService {
         },
       });
 
-      // await this.workflowProcessor.workflowAnswerReceived(conversation.id, {
-      //   ...context,
-      //   attribute: currentQuestion.attribute,
-      //   value: processingResult.rawValue,
-      //   state,
-      // });
+      await this.workflowProcessor.answerReceived(conversation.id, {
+        ...context,
+        attribute: currentQuestion.attribute,
+        value: processingResult.rawValue,
+        state,
+      });
 
       return {
         responded: true,
@@ -670,12 +702,15 @@ export class ConversationService {
 
 
     if (processingResult.status === ProcessAnswerStatus.NEXT_QUESTION) {
+      const nextQuestionId =
+        this.getQuestionId(processingResult.nextQuestion) ??
+        this.getQuestionId({ id: currentQuestion.nextQuestionId } as Partial<QuestionDomain>);
       const updatedConversation = await this.conversationRepository.save(
         conversation.id,
         {
           // Removed context: conversation.context to prevent overwriting async updates
           state: ConversationState.PROCESSING,
-          currentQuestionId: processingResult?.nextQuestion?.id,
+          currentQuestionId: nextQuestionId,
         },
       );
       const state = await this.responseService.getValidResponsesMapByAttribute(conversation.id!);
@@ -729,7 +764,10 @@ export class ConversationService {
   ): Promise<ConversationResponse> {
     const wf = conversation.context.workflow as { step: WorkflowEventType; sourceQuestionId: string; query: string; pendingQuestion?: any };
     const context = { ...conversation.context }
-    const sourceQuestion = conversation.questions?.find((item) => item.id === wf.sourceQuestionId);
+    const sourceQuestion = this.findQuestionById(
+      conversation.questions,
+      wf.sourceQuestionId,
+    );
 
     if (!sourceQuestion) {
       throw new NotFoundException('Workflow source question not found');
@@ -751,7 +789,7 @@ export class ConversationService {
         result.validationMessage,
         false,
         true,
-        pendingQuestion.id,
+        this.getQuestionId(pendingQuestion),
         pendingQuestion.attribute,
       );
 
@@ -768,7 +806,10 @@ export class ConversationService {
       if (!sourceQuestion?.id) {
         throw new NotFoundException('Workflow source question not found');
       }
-      const nextQuestion = result.nextQuestion
+      const nextQuestion = result.nextQuestion;
+      const nextQuestionId =
+        this.getQuestionId(nextQuestion) ??
+        this.getQuestionId({ id: sourceQuestion.nextQuestionId } as Partial<QuestionDomain>);
       const cleanedContext = {
         ...conversation.context,
         workflow: undefined,
@@ -792,7 +833,7 @@ export class ConversationService {
 
       const updated = await this.conversationRepository.save(conversation.id!, {
         context: cleanedContext,
-        currentQuestionId: nextQuestion?.id,
+        currentQuestionId: nextQuestionId,
         state: nextQuestion
           ? ConversationState.PROCESSING
           : ConversationState.COMPLETED,
@@ -834,7 +875,10 @@ export class ConversationService {
 
     const conversation = await this.findOne(conversationId);
 
-    const sourceQuestion = conversation.questions?.find((item) => item.id === conversation.currentQuestionId);
+    const sourceQuestion = this.findQuestionById(
+      conversation.questions,
+      conversation.currentQuestionId,
+    );
     const sourceWorkflow = conversation.context.workflow || {
       step: WorkflowEventType.ANSWER_RECEIVED,
       sourceQuestionId: sourceQuestion?.id!,
@@ -875,7 +919,12 @@ export class ConversationService {
         pendingQuestion,
       } as any,
     };
-    const response = await this.conversationRepository.save(conversationId, { context });
+
+    const response = await this.conversationRepository.save(conversationId, {
+      context,
+      currentQuestionId: this.getQuestionId(pendingQuestion),
+      state: ConversationState.WAITING_FOR_USER,
+    });
 
     await this.sendQuestion(response, pendingQuestion, false, context);
   }
@@ -884,8 +933,9 @@ export class ConversationService {
     const conversationId = payload.flowId || payload.conversationId;
     const { message } = payload;
     const conversation = await this.findOne(conversationId);
-    const currentQuestion = conversation.questions?.find(
-      (item) => item.id === conversation.currentQuestionId,
+    const currentQuestion = this.findQuestionById(
+      conversation.questions,
+      conversation.currentQuestionId,
     );
     const sourceWorkflow = conversation.context.workflow || {
       sourceQuestionId: conversation.currentQuestionId!,

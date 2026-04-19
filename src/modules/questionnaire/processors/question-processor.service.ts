@@ -63,9 +63,19 @@ export class QuestionProcessorService {
     private readonly apiProcessor: ApiProcessorFacade, // ✅ injected
   ) { }
 
+  private normalizeId(value: unknown): string | undefined {
+    if (value === undefined || value === null) return undefined;
+    return typeof value === 'string' ? value : String(value);
+  }
+
+  private getQuestionId(question: unknown): string | undefined {
+    if (!question || typeof question !== 'object') return undefined;
+    return this.normalizeId((question as any).id ?? (question as any)._id);
+  }
+
   /* -------------------- ASK -------------------- */
 
-  askQuestion(question: QuestionDomain, conversation?: ConversationDomain) {
+  askQuestion(question: QuestionDomain) {
     let message = question.text;
 
     if (question.options?.length) {
@@ -307,21 +317,31 @@ export class QuestionProcessorService {
   ): QuestionDomain | null {
 
     const questions = conversation.questions ?? [];
+    const normalizedOverrideId = this.normalizeId(overrideId);
+    const normalizedCurrentId = this.normalizeId(current.id);
+    const normalizedNextQuestionId = this.normalizeId(current.nextQuestionId);
 
     // 🔹 explicit jump
-    if (overrideId) {
-      return questions.find((q) => q.id === overrideId) || null;
+    if (normalizedOverrideId) {
+      return (
+        questions.find((q) => this.getQuestionId(q) === normalizedOverrideId) ||
+        null
+      );
     }
 
-    if (current.nextQuestionId) {
-      const question = questions.find((q) => q.id === current.nextQuestionId);
+    if (normalizedNextQuestionId) {
+      const question = questions.find(
+        (q) => this.getQuestionId(q) === normalizedNextQuestionId,
+      );
       if (!question) return null;
       return question;
     }
 
     // 🔹 fallback sequential
     const ordered = [...questions].sort((a, b) => a.index - b.index);
-    const i = ordered.findIndex((q) => q.id === current.id);
+    const i = ordered.findIndex(
+      (q) => this.getQuestionId(q) === normalizedCurrentId,
+    );
 
     return i >= 0 && i < ordered.length - 1
       ? ordered[i + 1]

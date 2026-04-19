@@ -1,8 +1,8 @@
 import { InjectModel } from "@nestjs/mongoose";
-import { ConversationDomain, ConversationStatus } from "../../../../shared/domain";
+import { ConversationDomain, ConversationStatus, QuestionDomain } from "../../../../shared/domain";
 import { Conversation } from "../../schemas/conversation.schema";
 import mongoose, { isValidObjectId, Model } from "mongoose";
-import { toDomain } from "../../../../shared/converters";
+import { mapQuestionDomainToShcema, toDomain } from "../../../../shared/converters";
 import { NotFoundException } from "@nestjs/common";
 import { FilterConversationDto } from "../../controllers/dto/filter-conversation.dto";
 
@@ -19,17 +19,18 @@ export class ConversationRepository {
     const schema = await this.model.create(payload);
     return toDomain(schema);
   }
-  async patch(id: string, data: Partial<ConversationDomain>): Promise<ConversationDomain> {
-    const $set: any = {};
-    Object.keys(data).forEach((key) => {
-      const value = data[key as keyof typeof data];
+  async patch(id: string, data: Partial<ConversationDomain> | Record<string, any>): Promise<ConversationDomain> {
+    const hasUpdateOperator = Object.keys(data).some((key) => key.startsWith('$'));
+    const update = hasUpdateOperator
+      ? data
+      : { $set: Object.fromEntries(
+          Object.entries(data).filter(([, value]) => value !== undefined),
+        ) };
 
-      if (value !== undefined) $set[key] = value;
-    });
     const conversation = await this.model
       .findByIdAndUpdate(
         id,
-        { ...$set },
+        update,
         { returnDocument: 'after' },
       )
       .lean();
@@ -55,6 +56,14 @@ export class ConversationRepository {
     if (!conversation) throw new NotFoundException("conversation not foupasnd");
     return toDomain(conversation);
   }
+
+  // async addDynamicQuestion(question: QuestionDomain) {
+
+  //       const pendingQuestionSchema = mapQuestionDomainToShcema(question);
+      
+  //   return this.
+    
+  // }
 
   async save(id: string, data: Partial<ConversationDomain>): Promise<ConversationDomain> {
     return this.patch(id, data);
