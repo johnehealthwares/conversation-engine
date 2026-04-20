@@ -20,23 +20,6 @@ export class WorkflowProcessorService {
     private readonly workflowHistoryService: WorkflowHistoryService,
   ) {}
 
-  private buildEvaluationContext(
-    state: Record<string, any>,
-    event: IWorkflowEvent,
-  ): Record<string, any> {
-    return {
-      ...state,
-      state,
-      payload: {
-        ...(event.state || {}),
-        answer: event.context?.value,
-        attribute: event.context?.attribute,
-        receiver: event.context?.receiver,
-      },
-      context: event.context || {},
-      event,
-    };
-  }
 
   // ---------------------------
   // GENERIC HANDLER
@@ -73,11 +56,13 @@ export class WorkflowProcessorService {
     }
 
     // 1️⃣ Merge event payload into instance state
-    const updatedState = {
-      ...instance.state,
+    const evaluation = {
+      instance: {
+        ...instance,
+        state: event.state
+      },
       ...(event.state || {}),
     };
-    const evaluationContext = this.buildEvaluationContext(updatedState, event);
 
     await this.workflowHistoryService.record(
       workflowInstanceId,
@@ -88,7 +73,7 @@ export class WorkflowProcessorService {
     // 2️⃣ Find matching transition
     const transition = step.transitions.find(t => {
       if (t.event && t.event !== '*' && t.event !== eventType) return false;
-      return !t.condition || evaluateCondition(t.condition, evaluationContext);
+      return !t.condition || evaluateCondition(t.condition, instance);
     });
 
     if (!transition) return;
@@ -98,7 +83,10 @@ export class WorkflowProcessorService {
 
     const updatedInstance = await this.instanceService.update(instance.id, {
       currentStepId: transition.nextStepId,
-      state: updatedState,
+      state: {
+        ...instance.state,
+        state: event.state,
+      },
     });
 
     // 4️⃣ Execute step if needed

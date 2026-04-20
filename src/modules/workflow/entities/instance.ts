@@ -17,7 +17,10 @@ export class WorkflowInstance {
   flowId: string;
 
   @Prop({ type: Object, default: {} })
-  state: Record<string, any>; // stores step responses, flags
+  state: Record<string, any>; // stores flow state
+
+  @Prop({ type: Object, default: {} })
+  steps: Record<string, any>; // stores step responses, flags
 
   @Prop({ type: Object, default: {} })
   config?: Record<string, any>;

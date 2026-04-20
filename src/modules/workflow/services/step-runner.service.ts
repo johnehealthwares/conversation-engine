@@ -136,7 +136,7 @@ export class StepRunnerService {
 
     const result: Record<string, any> = {};
 
-    for (const key in mapping) { 
+    for (const key in mapping) {
       const map = mapping[key];
 
       const isMappingEntry =
@@ -248,7 +248,7 @@ export class StepRunnerService {
     const handler = this.getHandler(resolvedConfig.action);
     const startedAt = Date.now();
 
-    const result = await this.executeActionWithRetry(
+    const actioned = await this.executeActionWithRetry(
       handler,
       resolvedConfig,
       actionContext,
@@ -257,104 +257,62 @@ export class StepRunnerService {
     const durationMs = Date.now() - startedAt;
 
     this.logger.log(
-      `Action completed (success=${result.success}, duration=${durationMs}ms)`,
+      `Action completed (success=${actioned.success}, duration=${durationMs}ms)`,
     );
 
     let response = {};
-    if (result.success && step.config?.responseBodyMapping) {
-      response = this.extractMappedFields(step.config.responseBodyMapping, result.data);
-    } else if (result.data && typeof result.data === 'object') {
-      response = result.data;
+    if (actioned.success && step.config?.responseBodyMapping) {
+      response = this.extractMappedFields(step.config.responseBodyMapping, actioned.data);
+    } else if (actioned.data && typeof actioned.data === 'object') {
+      response = actioned.data;
     }
 
     this.logger.debug(`Extracted data: ${JSON.stringify(response)}`);
-
-    const lastAction = {
-      stepId: step.id,
-      data: response,
-      success: result.success,
-      errorType: result.metadata?.errorType,
-      attempts: result.metadata?.attempts,
-    };
-
-    const updatedStepState = {
-      data: response,
+    const payload: any = {
+      state: instance.state,
       response,
-      result: null as Record<string, any> | null,
-      success: result.success,
-      errorType: result.metadata?.errorType,
-      attempts: result.metadata?.attempts,
-      actions:
-        instance.state?.lastAction?.stepId !== step.id
-          ? [lastAction]
-          : [...(instance.state?.[step.id]?.actions || []), lastAction],
-    };
-
-    const updatedState = {
-      ...instance.state,
-      ...step.config?.defaultValues,
-      [step.id]: updatedStepState,
-      lastAction,
-    };
-
-    const eventPayload = step.config?.resultMapping
-      ? this.extractMappedFields(step.config.resultMapping, {
-        ...updatedState,
-        state: updatedState,
-        step: updatedStepState,
-        trigger: triggerEvent.state,
-        payload: actionContext.payload,
-        context: triggerEvent.context,
-        metadata: result.metadata,
-        event: triggerEvent,
-      })
+      step: step.id,
+      trigger: triggerEvent.id,
+      event: triggerEvent.type,
+      context: triggerEvent.context,
+    }
+    payload.result = step.config?.resultMapping
+      ? this.extractMappedFields(step.config.resultMapping, payload)
       : response;
-
-    updatedState[step.id] = {
-      ...updatedStepState,
-      result: eventPayload,
-    };
+    payload[step.id] = {
+      result: payload.result,
+      response,
+    }
 
     this.logger.debug(`Updating state for instance ${instance.id}`);
 
     await this.workflowInstanceService.update(instance.id, {
-      state: updatedState,
-      config: result.updatedConfig ?? resolvedConfig,
+      ...payload
     });
 
     await this.workflowHistoryService.record(
       instance.id,
       step.id,
-      result.success
+      actioned.success
         ? WorkflowEventType.ACTION_COMPLETED
         : WorkflowEventType.ACTION_FAILED,
     );
 
-    const lifecycleEvent = result.success
+    const lifecycleEvent = actioned.success
       ? WorkflowEventType.ACTION_COMPLETED
       : WorkflowEventType.ACTION_FAILED;
-    const primaryEvent = result.nextEvent || lifecycleEvent;
+    const primaryEvent = actioned.nextEvent || lifecycleEvent;
     const eventMeta = {
       source: 'step-runner',
       sequence: Number(triggerEvent?.meta?.sequence ?? 0) + 1,
-    };
-
-    const eventPayloadWithFlow = {
-      ...(eventPayload || {}),
-      flowId: instance.flowId,
     };
 
     this.logger.log(`Emitting event ${primaryEvent}`);
 
     await this.eventBusService.emit(
       primaryEvent,
-      eventPayloadWithFlow,
-      {
-        workflowInstanceId: instance.id,
-        flowId: instance.flowId,
-        stepId: step.id,
-        correlationId: triggerEvent?.context?.correlationId,
-      },
+      instance.state,
+      triggerEvent.context,
       eventMeta,
     );
 
@@ -362,13 +320,8 @@ export class StepRunnerService {
       this.logger.log(`Emitting lifecycle event ${lifecycleEvent}`);
       await this.eventBusService.emit(
         lifecycleEvent,
-        eventPayloadWithFlow,
-        {
-          workflowInstanceId: instance.id,
-          flowId: instance.flowId,
-          stepId: step.id,
-          correlationId: triggerEvent?.context?.correlationId,
-        },
+        payload,
+        triggerEvent.context,
         eventMeta,
       );
     }

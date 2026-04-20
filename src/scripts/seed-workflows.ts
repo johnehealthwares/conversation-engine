@@ -94,7 +94,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         transitions: [
           {
             event: 'ANSWER_VALID',
-            condition: "payload.patient_dob === '2000-01-01'",
+            condition: "instance.state.patient_dob === '2000-01-01'",
             nextStepId: 'notify_special_dob',
           },
           {
@@ -387,7 +387,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
           },
           queryMapping: {
             'facilityName[$regex]': {
-              path: 'payload.answer',
+              path: 'state.facilityId',
             },
             'facilityName[$options]': {
               default: 'i',
@@ -412,7 +412,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
             question: {
               text: { default: 'Select a facility' },
               options: {
-                path: 'step.response.facilities',
+                path: 'response.facilities',
                 transform: 'map',
                 map: {
                   key: 'index',
@@ -426,7 +426,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         transitions: [
           {
             event: WorkflowEventType.ACTION_COMPLETED,
-            condition: 'fetch_facilities.result.question.options.length > 0',
+            condition: 'instance.steps?.fetch_facilities?.result?.question.options.length > 0',
             nextStepId: 'emit_facility_options',
           },
           {
@@ -445,7 +445,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         config: {
           action: 'WORKFLOW_ASK_OPTIONS',
           resultMapping: {
-            flowId: { path: 'context.flowId' },
+            flowId: { path: 'instance.flowId' },
             question: {
               text: { default: 'Select a facility' },
               options: {
@@ -519,7 +519,7 @@ const sampleWorkflows = (): SeedWorkflow[] => [
         transitions: [
           {
             event: WorkflowEventType.ACTION_COMPLETED,
-            condition: 'fetch_locations.result.question.options.length > 0',
+            condition: 'instance.fetch_locations.result.question.options.length > 0',
             nextStepId: 'emit_location_options',
           },
           {

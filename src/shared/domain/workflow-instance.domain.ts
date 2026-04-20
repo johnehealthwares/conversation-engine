@@ -8,6 +8,7 @@ export interface WorkflowInstance {
   workflowVersion: number;
   flowId: string;
   state: Record<string, any>;
+  steps: Record<string, any>;
   config?: Record<string, any>;
   status: WorkflowStatus;
   currentStepId?: string;

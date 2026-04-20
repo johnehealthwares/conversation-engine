@@ -4,8 +4,24 @@ export function evaluateCondition(condition: string, payload: any): boolean {
       'payload',
       `with (payload ?? {}) { return (${condition}); }`,
     );
-    return fn(payload);
-  } catch (e) {
+
+    const result = fn(payload);
+
+    console.debug('[evaluateCondition] success', {
+      condition,
+      payload,
+      result,
+    });
+
+    return result;
+  } catch (error: any) {
+    console.error('[evaluateCondition] failed', {
+      condition,
+      payload,
+      error: error?.message,
+      stack: error?.stack,
+    });
+
     return false;
   }
 }
